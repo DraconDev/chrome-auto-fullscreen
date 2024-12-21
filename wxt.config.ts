@@ -3,8 +3,8 @@ import { defineConfig } from "wxt";
 export default defineConfig({
     extensionApi: "chrome",
     manifest: {
-        name: "",
-        description: "",
+        name: "Example Extension",
+        description: "Example Extension",
         version: "1.1.0",
         permissions: ["storage"],
         icons: {
