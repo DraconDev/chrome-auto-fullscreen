@@ -1,3 +1,3 @@
 export type Store = {
-    exField: string;
+    env: string;
 };

@@ -1,7 +1,7 @@
 import { Store } from "@/types/types";
 
 export const defaultStore: Store = {
-    exField: "",
+    env: "",
 };
 
 export const store = storage.defineItem<Store>("sync:store", {
