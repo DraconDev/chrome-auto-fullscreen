@@ -5,32 +5,39 @@ export default defineContentScript({
   matches: ["<all_urls>"],
   async main() {
     let isEnabled = (await store.getValue()).enabled;
+    let isFullscreen = document.fullscreenElement !== null;
+
+    // Track fullscreen state changes
+    document.addEventListener("fullscreenchange", () => {
+      isFullscreen = document.fullscreenElement !== null;
+    });
 
     const handleMouseMove = async (e: MouseEvent) => {
       if (!isEnabled) return;
 
       const TOP_EDGE = 1;
-      const TOP_ZONE = Math.floor(window.innerHeight * 0.05);
+      const TOP_ZONE = Math.floor(window.innerHeight * 0.05); // 5%
 
       try {
-        // Exit fullscreen
-        if (e.clientY <= TOP_EDGE && document.fullscreenElement) {
+        // Exit condition: Only at absolute top edge
+        if (e.clientY <= TOP_EDGE && isFullscreen) {
           await document.exitFullscreen();
         }
-        // Enter fullscreen
-        else if (e.clientY >= TOP_ZONE) {
+        // Enter condition: Anywhere below 5% when not fullscreen
+        else if (e.clientY > TOP_ZONE && !isFullscreen) {
           await document.documentElement.requestFullscreen();
         }
       } catch (error) {
-        console.log("Fullscreen change prevented:", error);
+        console.log("Fullscreen change:", error);
       }
     };
 
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
 
+    // Store watcher and styles remain the same
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
-      if (!isEnabled && document.fullscreenElement) {
+      if (!isEnabled && isFullscreen) {
         document.exitFullscreen();
       }
     });
