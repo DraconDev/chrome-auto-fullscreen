@@ -1,3 +1,4 @@
 export type Store = {
-    env: string;
+  env: string;
+  enabled: boolean;
 };
