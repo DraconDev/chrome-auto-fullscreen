@@ -7,7 +7,7 @@ export default defineContentScript({
     let isFullscreen = false;
     let hoverTimeout: number | null = null;
     let isEnabled = (await store.getValue()).enabled;
-    const TOP_THRESHOLD = 50; // pixels from top to trigger exit
+    const TOP_THRESHOLD = 1; // pixels from top to trigger exit
 
     // Function to enter fullscreen with error handling
     const enterFullscreen = async () => {
