@@ -5,50 +5,53 @@ export default defineContentScript({
   matches: ["<all_urls>"],
   async main() {
     let isEnabled = (await store.getValue()).enabled;
-    let hasUserGesture = false;
 
-    // Add a click listener to capture user gesture
-    document.addEventListener("click", () => {
-      hasUserGesture = true;
-      setTimeout(() => (hasUserGesture = false), 5000); // Reset after 5 seconds
-    });
+    // Uncomment to hide fullscreen exit messages
+    const style = document.createElement("style");
+    style.textContent = `
+      *:fullscreen::backdrop {
+        background-color: transparent;
+      }
+      .Chrome-Full-Screen-Exit-Instruction {
+        display: none !important;
+      }
+      .Full-Screen-Exit-Instruction {
+        display: none !important;
+      }
+      div[class*="fullscreen-exit"],
+      div[class*="fullscreen-notification"],
+      div[class*="exit-fullscreen"],
+      div[id*="fullscreen-exit"],
+      div[id*="fullscreen-notification"] {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isEnabled || !hasUserGesture) return;
+    const handleMouseMove = async (e: MouseEvent) => {
+      if (!isEnabled) return;
 
       const TOP_EDGE = 1;
       const TOP_ZONE = Math.floor(window.innerHeight * 0.1);
 
       try {
+        // Exit fullscreen
         if (e.clientY <= TOP_EDGE && document.fullscreenElement) {
-          document.exitFullscreen();
-        } else if (e.clientY >= TOP_ZONE && !document.fullscreenElement) {
-          document.documentElement.requestFullscreen();
+          await document.exitFullscreen();
+        }
+        // Enter fullscreen
+        else if (e.clientY >= TOP_ZONE && !document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
         }
       } catch (error) {
-        // console.log('Fullscreen change:', error.message);
+        console.log("Fullscreen change prevented:", error);
       }
     };
-
-    // Add permission check
-    const hasFullscreenPermission = await chrome.permissions.contains({
-      permissions: ["fullscreen"],
-    });
-
-    if (!hasFullscreenPermission) {
-      console.warn("Fullscreen permission not granted");
-      return;
-    }
-
-    // Style adjustments (keep your existing styles)
-    const style = document.createElement("style");
-    style.textContent = `/* ... your existing styles ... */`;
-    document.head.appendChild(style);
 
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
       if (!isEnabled && document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen();
       }
     });
 
