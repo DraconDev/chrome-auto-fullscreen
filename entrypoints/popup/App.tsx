@@ -28,7 +28,7 @@ function App() {
   };
 
   return (
-    <div className="p-4 w-72 bg-gray-50">
+    <div className="w-64 p-4 bg-gray-50">
       <div className="flex flex-col items-center space-y-4">
         <h1 className="text-lg font-semibold text-gray-800">Auto Fullscreen</h1>
 
@@ -90,22 +90,6 @@ function App() {
                 />
               </svg>
               Touch top edge to exit
-            </p>
-            <p className="flex items-center">
-              <svg
-                className="w-4 h-4 mr-2 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                />
-              </svg>
-              Alt+F to toggle
             </p>
           </div>
         </div>
