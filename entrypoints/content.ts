@@ -4,11 +4,8 @@ import { store } from "@/utils/store";
 export default defineContentScript({
   matches: ["<all_urls>"],
   async main() {
-    let isFullscreen = false;
     let isEnabled = (await store.getValue()).enabled;
-    let lastAttempt = 0;
-    const TOP_THRESHOLD = 1; // 1px threshold for faster exit
-    const RETRY_DELAY = 100; // Minimum ms between fullscreen attempts
+    const TOP_THRESHOLD = Math.floor(window.innerHeight * 0.1); // Top 10% of screen
 
     // Hide fullscreen message
     const style = document.createElement("style");
@@ -35,66 +32,35 @@ export default defineContentScript({
     `;
     document.head.appendChild(style);
 
-    // Function to enter fullscreen with error handling
-    const enterFullscreen = async () => {
-      const now = Date.now();
-      if (now - lastAttempt < RETRY_DELAY) return;
-      lastAttempt = now;
-
-      try {
-        const element = document.documentElement;
-        if (!isFullscreen && element.requestFullscreen) {
-          await element.requestFullscreen();
-          isFullscreen = true;
-        }
-      } catch (error) {
-        console.error("Failed to enter fullscreen:", error);
-      }
-    };
-
-    // Function to exit fullscreen with error handling
-    const exitFullscreen = async () => {
-      try {
-        if (document.fullscreenElement && document.exitFullscreen) {
-          await document.exitFullscreen();
-          isFullscreen = false;
-        }
-      } catch (error) {
-        console.error("Failed to exit fullscreen:", error);
-      }
-    };
-
-    // Track fullscreen state changes
-    const handleFullscreenChange = () => {
-      isFullscreen = !!document.fullscreenElement;
-    };
-
     // Handle mouse movement
     const handleMouseMove = (e: MouseEvent) => {
       if (!isEnabled) return;
 
       if (e.clientY <= TOP_THRESHOLD) {
-        if (isFullscreen) {
-          exitFullscreen();
+        // Exit fullscreen when in top 10%
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen();
         }
-      } else if (!isFullscreen) {
-        enterFullscreen();
+      } else {
+        // Enter fullscreen when below top 10%
+        if (
+          !document.fullscreenElement &&
+          document.documentElement.requestFullscreen
+        ) {
+          document.documentElement.requestFullscreen();
+        }
       }
     };
 
     // Watch for changes in enabled state
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
-      if (!isEnabled && isFullscreen) {
-        exitFullscreen();
+      if (!isEnabled && document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen();
       }
     });
 
-    // Set up event listeners
+    // Set up event listener
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-
-    // Initialize state
-    isFullscreen = !!document.fullscreenElement;
   },
 });
