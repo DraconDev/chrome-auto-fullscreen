@@ -5,7 +5,8 @@ export default defineContentScript({
   matches: ["<all_urls>"],
   async main() {
     let isEnabled = (await store.getValue()).enabled;
-    const TOP_THRESHOLD = Math.floor(window.innerHeight * 0.1); // Top 10% of screen
+    const TOP_EDGE = 1; // 1px threshold for exit
+    const TOP_ZONE = Math.floor(window.innerHeight * 0.1); // Top 10% for re-entry
 
     // Hide fullscreen message
     const style = document.createElement("style");
@@ -36,13 +37,13 @@ export default defineContentScript({
     const handleMouseMove = (e: MouseEvent) => {
       if (!isEnabled) return;
 
-      if (e.clientY <= TOP_THRESHOLD) {
-        // Exit fullscreen when in top 10%
+      if (e.clientY <= TOP_EDGE) {
+        // Exit fullscreen when at very top
         if (document.fullscreenElement && document.exitFullscreen) {
           document.exitFullscreen();
         }
-      } else {
-        // Enter fullscreen when below top 10%
+      } else if (e.clientY <= TOP_ZONE) {
+        // Enter fullscreen when in top 10% (but not at very top)
         if (
           !document.fullscreenElement &&
           document.documentElement.requestFullscreen
