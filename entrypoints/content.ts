@@ -7,7 +7,9 @@ export default defineContentScript({
     let isFullscreen = false;
     let isEnabled = (await store.getValue()).enabled;
     let wasFullscreenBeforeLeaving = false;
+    let lastAttempt = 0;
     const TOP_THRESHOLD = 1; // 1px threshold for faster exit
+    const ATTEMPT_THRESHOLD = 50; // ms between attempts
 
     // Hide fullscreen message
     const style = document.createElement("style");
@@ -37,6 +39,10 @@ export default defineContentScript({
     // Function to enter fullscreen with error handling
     const enterFullscreen = async () => {
       try {
+        const now = Date.now();
+        if (now - lastAttempt < ATTEMPT_THRESHOLD) return;
+        lastAttempt = now;
+
         const element = document.documentElement;
         if (!isFullscreen && element.requestFullscreen) {
           await element.requestFullscreen();
@@ -69,15 +75,39 @@ export default defineContentScript({
       }
     };
 
-    // Mouse move handler for both exit and enter
+    // Mouse move handler for exit
     const handleMouseMove = (e: MouseEvent) => {
       if (!isEnabled) return;
 
       if (isFullscreen && e.clientY <= TOP_THRESHOLD) {
         exitFullscreen();
-      } else if (!isFullscreen && e.clientY > TOP_THRESHOLD) {
-        enterFullscreen();
+      } else if (!isFullscreen) {
+        requestAnimationFrame(() => {
+          enterFullscreen();
+        });
       }
+    };
+
+    // Additional mouse handlers for better activation
+    const handleMouseOver = () => {
+      if (!isEnabled || isFullscreen) return;
+      requestAnimationFrame(() => {
+        enterFullscreen();
+      });
+    };
+
+    const handleMouseEnter = () => {
+      if (!isEnabled || isFullscreen) return;
+      requestAnimationFrame(() => {
+        enterFullscreen();
+      });
+    };
+
+    const handleClick = () => {
+      if (!isEnabled || isFullscreen) return;
+      requestAnimationFrame(() => {
+        enterFullscreen();
+      });
     };
 
     // Handle page visibility changes
@@ -104,6 +134,11 @@ export default defineContentScript({
 
     // Add event listeners
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
+    document.addEventListener("mouseover", handleMouseOver, { passive: true });
+    document.addEventListener("mouseenter", handleMouseEnter, {
+      passive: true,
+    });
+    document.addEventListener("click", handleClick, { passive: true });
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
@@ -116,6 +151,9 @@ export default defineContentScript({
     // Cleanup function
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseover", handleMouseOver);
+      document.removeEventListener("mouseenter", handleMouseEnter);
+      document.removeEventListener("click", handleClick);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (style.parentNode) {
