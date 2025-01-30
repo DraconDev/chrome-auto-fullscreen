@@ -67,7 +67,7 @@ export default defineContentScript({
       // Set a small delay before entering fullscreen to prevent accidental triggers
       hoverTimeout = window.setTimeout(() => {
         enterFullscreen();
-      }, 750); // Slightly longer delay for more intentional activation
+      }, 0); // Slightly longer delay for more intentional activation
     };
 
     // Mouse leave handler
