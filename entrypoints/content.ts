@@ -10,6 +10,31 @@ export default defineContentScript({
     let wasFullscreenBeforeLeaving = false;
     const TOP_THRESHOLD = 1; // 1px threshold for faster exit
 
+    // Hide fullscreen message
+    const style = document.createElement("style");
+    style.textContent = `
+      *:fullscreen::backdrop {
+        background-color: transparent;
+      }
+      /* Chrome */
+      .Chrome-Full-Screen-Exit-Instruction {
+        display: none !important;
+      }
+      /* Firefox */
+      .Full-Screen-Exit-Instruction {
+        display: none !important;
+      }
+      /* General fullscreen message hiding attempt */
+      div[class*="fullscreen-exit"], 
+      div[class*="fullscreen-notification"],
+      div[class*="exit-fullscreen"],
+      div[id*="fullscreen-exit"],
+      div[id*="fullscreen-notification"] {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+
     // Function to enter fullscreen with error handling
     const enterFullscreen = async () => {
       try {
@@ -119,6 +144,9 @@ export default defineContentScript({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (hoverTimeout !== null) {
         clearTimeout(hoverTimeout);
+      }
+      if (style.parentNode) {
+        style.parentNode.removeChild(style);
       }
     };
   },
