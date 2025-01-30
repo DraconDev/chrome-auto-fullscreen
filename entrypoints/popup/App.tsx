@@ -70,10 +70,10 @@ function App() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M5 10l7-7m0 0l7 7m-7-7v18"
+                  d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
                 />
               </svg>
-              Touch top edge to exit
+              Click anywhere to enter fullscreen
             </p>
             <p className="flex items-center">
               <svg
@@ -86,10 +86,10 @@ function App() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
+                  d="M5 10l7-7m0 0l7 7m-7-7v18"
                 />
               </svg>
-              Move to top area to re-enter
+              Move to top edge to exit
             </p>
           </div>
         </div>
