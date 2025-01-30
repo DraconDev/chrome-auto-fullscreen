@@ -6,7 +6,7 @@ export default defineContentScript({
   async main() {
     let isEnabled = (await store.getValue()).enabled;
     const TOP_EDGE = 1; // 1px threshold for exit
-    const TOP_ZONE = Math.floor(window.innerHeight * 0.1); // Top 10% for re-entry
+    const TOP_ZONE = Math.floor(window.innerHeight * 0.05); // Top 10% for re-entry
 
     // Hide fullscreen message
     // const style = document.createElement("style");
