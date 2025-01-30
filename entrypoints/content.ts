@@ -39,15 +39,12 @@ export default defineContentScript({
 
       if (e.clientY <= TOP_EDGE) {
         // Exit fullscreen when at very top
-        if (document.fullscreenElement && document.exitFullscreen) {
+        if (document.fullscreenElement) {
           document.exitFullscreen();
         }
-      } else if (e.clientY <= TOP_ZONE) {
+      } else if (e.clientY >= TOP_ZONE) {
         // Enter fullscreen when in top 10% (but not at very top)
-        if (
-          !document.fullscreenElement &&
-          document.documentElement.requestFullscreen
-        ) {
+        if (!document.fullscreenElement) {
           document.documentElement.requestFullscreen();
         }
       }
