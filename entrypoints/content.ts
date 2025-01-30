@@ -9,43 +9,65 @@ export default defineContentScript({
     let isEnabled = (await store.getValue()).enabled;
     const TOP_THRESHOLD = 50; // pixels from top to trigger exit
 
-    // Function to enter fullscreen
-    const enterFullscreen = () => {
-      const element = document.documentElement;
-      if (element.requestFullscreen) {
-        element.requestFullscreen();
-        isFullscreen = true;
-      }
-    };
-
-    // Function to exit fullscreen
-    const exitFullscreen = () => {
-      if (document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen();
-        isFullscreen = false;
-      }
-    };
-
-    // Mouse move handler for top detection
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isEnabled && isFullscreen && e.clientY <= TOP_THRESHOLD) {
-        exitFullscreen();
-      }
-    };
-
-    // Mouse hover handler
-    const handleMouseHover = () => {
-      if (isEnabled && !isFullscreen) {
-        // Clear any existing timeout
-        if (hoverTimeout !== null) {
-          clearTimeout(hoverTimeout);
+    // Function to enter fullscreen with error handling
+    const enterFullscreen = async () => {
+      try {
+        const element = document.documentElement;
+        if (element.requestFullscreen) {
+          await element.requestFullscreen();
+          isFullscreen = true;
         }
-
-        // Set a small delay before entering fullscreen to prevent accidental triggers
-        hoverTimeout = window.setTimeout(() => {
-          enterFullscreen();
-        }, 500);
+      } catch (error) {
+        console.error("Failed to enter fullscreen:", error);
       }
+    };
+
+    // Function to exit fullscreen with error handling
+    const exitFullscreen = async () => {
+      try {
+        if (document.fullscreenElement && document.exitFullscreen) {
+          await document.exitFullscreen();
+          isFullscreen = false;
+        }
+      } catch (error) {
+        console.error("Failed to exit fullscreen:", error);
+      }
+    };
+
+    // Track fullscreen state changes
+    const handleFullscreenChange = () => {
+      isFullscreen = !!document.fullscreenElement;
+    };
+
+    // Mouse move handler for top detection with debouncing
+    let moveTimeout: number | null = null;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isEnabled || !isFullscreen) return;
+
+      if (moveTimeout !== null) {
+        window.clearTimeout(moveTimeout);
+      }
+
+      moveTimeout = window.setTimeout(() => {
+        if (e.clientY <= TOP_THRESHOLD) {
+          exitFullscreen();
+        }
+      }, 100); // Small delay to prevent flickering
+    };
+
+    // Mouse hover handler with improved timing
+    const handleMouseHover = () => {
+      if (!isEnabled || isFullscreen) return;
+
+      // Clear any existing timeout
+      if (hoverTimeout !== null) {
+        clearTimeout(hoverTimeout);
+      }
+
+      // Set a small delay before entering fullscreen to prevent accidental triggers
+      hoverTimeout = window.setTimeout(() => {
+        enterFullscreen();
+      }, 750); // Slightly longer delay for more intentional activation
     };
 
     // Mouse leave handler
@@ -53,6 +75,13 @@ export default defineContentScript({
       if (hoverTimeout !== null) {
         clearTimeout(hoverTimeout);
         hoverTimeout = null;
+      }
+    };
+
+    // Handle page visibility changes
+    const handleVisibilityChange = () => {
+      if (document.hidden && isFullscreen) {
+        exitFullscreen();
       }
     };
 
@@ -65,17 +94,27 @@ export default defineContentScript({
     });
 
     // Add event listeners
-    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mousemove", handleMouseMove, { passive: true });
     document.body.addEventListener("mouseenter", handleMouseHover);
     document.body.addEventListener("mouseleave", handleMouseLeave);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Reinitialize fullscreen state
+    isFullscreen = !!document.fullscreenElement;
 
     // Cleanup function
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.body.removeEventListener("mouseenter", handleMouseHover);
       document.body.removeEventListener("mouseleave", handleMouseLeave);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (hoverTimeout !== null) {
         clearTimeout(hoverTimeout);
+      }
+      if (moveTimeout !== null) {
+        clearTimeout(moveTimeout);
       }
     };
   },
