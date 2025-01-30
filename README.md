@@ -1,45 +1,87 @@
-# SubHub - Subscription Tracker
+# Chrome Extension with WXT, Bun, React, TypeScript & Tailwind CSS
 
-A Chrome extension for tracking and managing subscriptions, built with modern web technologies.
+A modern Chrome extension template built with:
 
-## Tech Stack
+- **Bun** - Fast JavaScript runtime and package manager
+- **WXT** - WebExtension Toolkit for building browser extensions
+- **React** - Component-based UI framework
+- **TypeScript** - Type-safe JavaScript
+- **Tailwind CSS** - Utility-first CSS framework
 
-- **Runtime:** Bun
-- **Extension Framework:** WXT
-- **Frontend:** React
-- **Language:** TypeScript
-- **Styling:** Tailwind CSS
-- **Data Storage:** chrome.storage.sync
+## Features
 
-## Development
+- Modern development stack
+- Type-safe codebase
+- Utility-first styling
+- Chrome storage integration
+- Popup UI with React components
+- Background and content scripts
 
-1. Install dependencies:
+## Installation
+
+1. Clone the repository
+2. Install dependencies:
+
 ```bash
 bun install
 ```
 
-2. Start development server:
+3. Start development server:
+
 ```bash
-bun dev
+bun run dev
 ```
 
-3. Build for production:
+## Development Setup
+
+1. Install Tailwind CSS:
+
 ```bash
-bun build
+bun add -D tailwindcss postcss autoprefixer
 ```
 
-## Project Structure
+2. Initialize Tailwind:
 
-- `entrypoints/` - Extension entry points (popup, background, content scripts)
-- `components/` - Reusable React components
-- `assets/` - Static assets
-- `public/` - Public files
+```bash
+bunx tailwindcss init -p
+```
 
-## Guidelines
+3. Configure Tailwind in `tailwind.config.js`:
 
-- Use TypeScript for type safety
-- Follow React best practices
-- Style with Tailwind CSS utility classes only
-- Handle errors with try-catch blocks
+```js
+content: [
+  "./entrypoints/**/*.{js,ts,jsx,tsx}",
+  "./components/**/*.{js,ts,jsx,tsx}",
+],
+```
+
+## Usage
+
+- **Popup UI**: Located in `entrypoints/popup/`
+- **Background Script**: `entrypoints/background.ts`
+- **Content Script**: `entrypoints/content.ts`
+- **Storage**: Uses `chrome.storage.sync` for persistent data
+
+## Development Best Practices
+
+- Use TypeScript types for all variables and functions
+- Follow Tailwind CSS utility-first approach
+- Implement proper error handling with `try...catch`
+- Use appropriate logging levels:
+  - `console.log()` for info
+  - `console.warn()` for warnings
+  - `console.error()` for errors
+- Optimize background script performance
 - Follow accessibility guidelines (WCAG)
-- Write unit tests for components and utilities
+
+## Contributing
+
+1. Fork the repository
+2. Create a new branch
+3. Commit your changes
+4. Push to the branch
+5. Create a pull request
+
+## License
+
+MIT License
