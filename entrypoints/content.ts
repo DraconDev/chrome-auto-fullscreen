@@ -7,7 +7,8 @@ export default defineContentScript({
     let isFullscreen = false;
     let hoverTimeout: number | null = null;
     let isEnabled = (await store.getValue()).enabled;
-    const TOP_THRESHOLD = 1; // pixels from top to trigger exit
+    let wasFullscreenBeforeLeaving = false;
+    const TOP_THRESHOLD = 1; // 1px threshold for faster exit
 
     // Function to enter fullscreen with error handling
     const enterFullscreen = async () => {
@@ -16,6 +17,7 @@ export default defineContentScript({
         if (element.requestFullscreen) {
           await element.requestFullscreen();
           isFullscreen = true;
+          wasFullscreenBeforeLeaving = true;
         }
       } catch (error) {
         console.error("Failed to enter fullscreen:", error);
@@ -28,6 +30,7 @@ export default defineContentScript({
         if (document.fullscreenElement && document.exitFullscreen) {
           await document.exitFullscreen();
           isFullscreen = false;
+          wasFullscreenBeforeLeaving = false;
         }
       } catch (error) {
         console.error("Failed to exit fullscreen:", error);
@@ -37,25 +40,19 @@ export default defineContentScript({
     // Track fullscreen state changes
     const handleFullscreenChange = () => {
       isFullscreen = !!document.fullscreenElement;
-    };
-
-    // Mouse move handler for top detection with debouncing
-    let moveTimeout: number | null = null;
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isEnabled || !isFullscreen) return;
-
-      if (moveTimeout !== null) {
-        window.clearTimeout(moveTimeout);
+      if (!isFullscreen) {
+        wasFullscreenBeforeLeaving = false;
       }
-
-      moveTimeout = window.setTimeout(() => {
-        if (e.clientY <= TOP_THRESHOLD) {
-          exitFullscreen();
-        }
-      }, 100); // Small delay to prevent flickering
     };
 
-    // Mouse hover handler with improved timing
+    // Mouse move handler for top detection - no debouncing for faster response
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isEnabled && isFullscreen && e.clientY <= TOP_THRESHOLD) {
+        exitFullscreen();
+      }
+    };
+
+    // Mouse hover handler with minimal delay
     const handleMouseHover = () => {
       if (!isEnabled || isFullscreen) return;
 
@@ -64,10 +61,10 @@ export default defineContentScript({
         clearTimeout(hoverTimeout);
       }
 
-      // Set a small delay before entering fullscreen to prevent accidental triggers
+      // Minimal delay to prevent accidental triggers
       hoverTimeout = window.setTimeout(() => {
         enterFullscreen();
-      }, 0); // Slightly longer delay for more intentional activation
+      }, 100); // Reduced to 100ms for snappier response
     };
 
     // Mouse leave handler
@@ -80,8 +77,15 @@ export default defineContentScript({
 
     // Handle page visibility changes
     const handleVisibilityChange = () => {
-      if (document.hidden && isFullscreen) {
-        exitFullscreen();
+      if (document.hidden) {
+        if (isFullscreen) {
+          exitFullscreen();
+        }
+      } else {
+        // When returning to the page, if it was fullscreen before, re-enter immediately
+        if (wasFullscreenBeforeLeaving && isEnabled) {
+          enterFullscreen();
+        }
       }
     };
 
@@ -100,8 +104,11 @@ export default defineContentScript({
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Reinitialize fullscreen state
+    // Initialize state and check if we should be fullscreen
     isFullscreen = !!document.fullscreenElement;
+    if (isEnabled && !document.hidden && wasFullscreenBeforeLeaving) {
+      enterFullscreen();
+    }
 
     // Cleanup function
     return () => {
@@ -112,9 +119,6 @@ export default defineContentScript({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (hoverTimeout !== null) {
         clearTimeout(hoverTimeout);
-      }
-      if (moveTimeout !== null) {
-        clearTimeout(moveTimeout);
       }
     };
   },
