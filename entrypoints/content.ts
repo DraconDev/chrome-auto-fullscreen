@@ -1,10 +1,12 @@
 import { defineContentScript } from "wxt/sandbox";
+import { store } from "@/utils/store";
 
 export default defineContentScript({
   matches: ["<all_urls>"],
-  main() {
+  async main() {
     let isFullscreen = false;
     let hoverTimeout: number | null = null;
+    let isEnabled = (await store.getValue()).enabled;
     const TOP_THRESHOLD = 50; // pixels from top to trigger exit
 
     // Function to enter fullscreen
@@ -26,14 +28,14 @@ export default defineContentScript({
 
     // Mouse move handler for top detection
     const handleMouseMove = (e: MouseEvent) => {
-      if (isFullscreen && e.clientY <= TOP_THRESHOLD) {
+      if (isEnabled && isFullscreen && e.clientY <= TOP_THRESHOLD) {
         exitFullscreen();
       }
     };
 
     // Mouse hover handler
     const handleMouseHover = () => {
-      if (!isFullscreen) {
+      if (isEnabled && !isFullscreen) {
         // Clear any existing timeout
         if (hoverTimeout !== null) {
           clearTimeout(hoverTimeout);
@@ -53,6 +55,14 @@ export default defineContentScript({
         hoverTimeout = null;
       }
     };
+
+    // Watch for changes in enabled state
+    store.watch((newValue) => {
+      isEnabled = newValue.enabled;
+      if (!isEnabled && isFullscreen) {
+        exitFullscreen();
+      }
+    });
 
     // Add event listeners
     document.addEventListener("mousemove", handleMouseMove);
