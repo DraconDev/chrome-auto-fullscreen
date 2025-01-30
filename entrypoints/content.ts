@@ -10,8 +10,8 @@ export default defineContentScript({
       if (!isEnabled) return;
 
       const TOP_EDGE = 1;
-      const TOP_ZONE = Math.floor(window.innerHeight * 0.05);
-      const BOTTOM_EDGE = window.innerHeight - 1;
+      // const TOP_ZONE = Math.floor(window.innerHeight * 0.05);
+      // const BOTTOM_EDGE = window.innerHeight - 1;
 
       try {
         // Exit fullscreen
@@ -22,7 +22,7 @@ export default defineContentScript({
         // else if (e.clientY >= TOP_ZONE && !document.fullscreenElement) {
         //   await document.documentElement.requestFullscreen();
         // }
-        else if (e.clientY >= BOTTOM_EDGE) {
+        else if (e.clientY > TOP_EDGE) {
           await document.documentElement.requestFullscreen();
         }
       } catch (error) {
