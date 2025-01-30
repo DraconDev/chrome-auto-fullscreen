@@ -6,28 +6,6 @@ export default defineContentScript({
   async main() {
     let isEnabled = (await store.getValue()).enabled;
 
-    // Uncomment to hide fullscreen exit messages
-    const style = document.createElement("style");
-    style.textContent = `
-      *:fullscreen::backdrop {
-        background-color: transparent;
-      }
-      .Chrome-Full-Screen-Exit-Instruction {
-        display: none !important;
-      }
-      .Full-Screen-Exit-Instruction {
-        display: none !important;
-      }
-      div[class*="fullscreen-exit"],
-      div[class*="fullscreen-notification"],
-      div[class*="exit-fullscreen"],
-      div[id*="fullscreen-exit"],
-      div[id*="fullscreen-notification"] {
-        display: none !important;
-      }
-    `;
-    document.head.appendChild(style);
-
     const handleMouseMove = async (e: MouseEvent) => {
       if (!isEnabled) return;
 
@@ -48,6 +26,8 @@ export default defineContentScript({
       }
     };
 
+    document.addEventListener("mousemove", handleMouseMove, { passive: true });
+
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
       if (!isEnabled && document.fullscreenElement) {
@@ -55,6 +35,26 @@ export default defineContentScript({
       }
     });
 
-    document.addEventListener("mousemove", handleMouseMove, { passive: true });
+    // Uncomment to hide fullscreen exit messages
+    const style = document.createElement("style");
+    style.textContent = `
+          *:fullscreen::backdrop {
+            background-color: transparent;
+          }
+          .Chrome-Full-Screen-Exit-Instruction {
+            display: none !important;
+          }
+          .Full-Screen-Exit-Instruction {
+            display: none !important;
+          }
+          div[class*="fullscreen-exit"],
+          div[class*="fullscreen-notification"],
+          div[class*="exit-fullscreen"],
+          div[id*="fullscreen-exit"],
+          div[id*="fullscreen-notification"] {
+            display: none !important;
+          }
+        `;
+    document.head.appendChild(style);
   },
 });
