@@ -6,7 +6,7 @@ export default defineConfig({
     name: "Auto Fullscreen",
     description:
       "Click anywhere to enter fullscreen mode, move cursor to top edge to exit. Simple and intuitive.",
-    version: "0.0.67",
+    version: "0.0.68",
     permissions: ["storage"],
     host_permissions: ["<all_urls>"],
     icons: {
