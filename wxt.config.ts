@@ -5,17 +5,10 @@ export default defineConfig({
   manifest: {
     name: "Auto Fullscreen",
     description:
-      "Automatically enters fullscreen mode when hovering over webpages. Move cursor to top to exit. Simple and intuitive.",
-    version: "0.0.63",
-    permissions: ["storage", "fullscreen"],
+      "Click anywhere to enter fullscreen mode, move cursor to top edge to exit. Simple and intuitive.",
+    version: "0.0.64",
+    permissions: ["storage"],
     host_permissions: ["<all_urls>"],
-    // Add required permissions for fullscreen
-    web_accessible_resources: [
-      {
-        resources: ["*"],
-        matches: ["<all_urls>"],
-      },
-    ],
     icons: {
       "16": "icon/16.png",
       "32": "icon/32.png",
