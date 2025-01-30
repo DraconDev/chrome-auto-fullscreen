@@ -5,7 +5,6 @@ export default defineContentScript({
   matches: ["<all_urls>"],
   async main() {
     let isFullscreen = false;
-    let hoverTimeout: number | null = null;
     let isEnabled = (await store.getValue()).enabled;
     let wasFullscreenBeforeLeaving = false;
     const TOP_THRESHOLD = 1; // 1px threshold for faster exit
@@ -39,7 +38,7 @@ export default defineContentScript({
     const enterFullscreen = async () => {
       try {
         const element = document.documentElement;
-        if (element.requestFullscreen) {
+        if (!isFullscreen && element.requestFullscreen) {
           await element.requestFullscreen();
           isFullscreen = true;
           wasFullscreenBeforeLeaving = true;
@@ -70,33 +69,14 @@ export default defineContentScript({
       }
     };
 
-    // Mouse move handler for top detection - no debouncing for faster response
+    // Mouse move handler for both exit and enter
     const handleMouseMove = (e: MouseEvent) => {
-      if (isEnabled && isFullscreen && e.clientY <= TOP_THRESHOLD) {
+      if (!isEnabled) return;
+
+      if (isFullscreen && e.clientY <= TOP_THRESHOLD) {
         exitFullscreen();
-      }
-    };
-
-    // Mouse hover handler with minimal delay
-    const handleMouseHover = () => {
-      if (!isEnabled || isFullscreen) return;
-
-      // Clear any existing timeout
-      if (hoverTimeout !== null) {
-        clearTimeout(hoverTimeout);
-      }
-
-      // Minimal delay to prevent accidental triggers
-      hoverTimeout = window.setTimeout(() => {
+      } else if (!isFullscreen && e.clientY > TOP_THRESHOLD) {
         enterFullscreen();
-      }, 100); // Reduced to 100ms for snappier response
-    };
-
-    // Mouse leave handler
-    const handleMouseLeave = () => {
-      if (hoverTimeout !== null) {
-        clearTimeout(hoverTimeout);
-        hoverTimeout = null;
       }
     };
 
@@ -124,8 +104,6 @@ export default defineContentScript({
 
     // Add event listeners
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
-    document.body.addEventListener("mouseenter", handleMouseHover);
-    document.body.addEventListener("mouseleave", handleMouseLeave);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
@@ -138,13 +116,8 @@ export default defineContentScript({
     // Cleanup function
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
-      document.body.removeEventListener("mouseenter", handleMouseHover);
-      document.body.removeEventListener("mouseleave", handleMouseLeave);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (hoverTimeout !== null) {
-        clearTimeout(hoverTimeout);
-      }
       if (style.parentNode) {
         style.parentNode.removeChild(style);
       }
