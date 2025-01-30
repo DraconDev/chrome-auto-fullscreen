@@ -9,29 +9,29 @@ export default defineContentScript({
     const TOP_ZONE = Math.floor(window.innerHeight * 0.1); // Top 10% for re-entry
 
     // Hide fullscreen message
-    const style = document.createElement("style");
-    style.textContent = `
-      *:fullscreen::backdrop {
-        background-color: transparent;
-      }
-      /* Chrome */
-      .Chrome-Full-Screen-Exit-Instruction {
-        display: none !important;
-      }
-      /* Firefox */
-      .Full-Screen-Exit-Instruction {
-        display: none !important;
-      }
-      /* General fullscreen message hiding attempt */
-      div[class*="fullscreen-exit"], 
-      div[class*="fullscreen-notification"],
-      div[class*="exit-fullscreen"],
-      div[id*="fullscreen-exit"],
-      div[id*="fullscreen-notification"] {
-        display: none !important;
-      }
-    `;
-    document.head.appendChild(style);
+    // const style = document.createElement("style");
+    // style.textContent = `
+    //   *:fullscreen::backdrop {
+    //     background-color: transparent;
+    //   }
+    //   /* Chrome */
+    //   .Chrome-Full-Screen-Exit-Instruction {
+    //     display: none !important;
+    //   }
+    //   /* Firefox */
+    //   .Full-Screen-Exit-Instruction {
+    //     display: none !important;
+    //   }
+    //   /* General fullscreen message hiding attempt */
+    //   div[class*="fullscreen-exit"],
+    //   div[class*="fullscreen-notification"],
+    //   div[class*="exit-fullscreen"],
+    //   div[id*="fullscreen-exit"],
+    //   div[id*="fullscreen-notification"] {
+    //     display: none !important;
+    //   }
+    // `;
+    // document.head.appendChild(style);
 
     // Handle mouse movement
     const handleMouseMove = (e: MouseEvent) => {
