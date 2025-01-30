@@ -18,7 +18,7 @@ export default defineContentScript({
           await document.exitFullscreen();
         }
         // Enter fullscreen
-        else if (e.clientY >= TOP_ZONE && !document.fullscreenElement) {
+        else if (e.clientY >= TOP_ZONE && ) {
           await document.documentElement.requestFullscreen();
         }
       } catch (error) {
@@ -36,25 +36,25 @@ export default defineContentScript({
     });
 
     // Uncomment to hide fullscreen exit messages
-    const style = document.createElement("style");
-    style.textContent = `
-          *:fullscreen::backdrop {
-            background-color: transparent;
-          }
-          .Chrome-Full-Screen-Exit-Instruction {
-            display: none !important;
-          }
-          .Full-Screen-Exit-Instruction {
-            display: none !important;
-          }
-          div[class*="fullscreen-exit"],
-          div[class*="fullscreen-notification"],
-          div[class*="exit-fullscreen"],
-          div[id*="fullscreen-exit"],
-          div[id*="fullscreen-notification"] {
-            display: none !important;
-          }
-        `;
-    document.head.appendChild(style);
+    // const style = document.createElement("style");
+    // style.textContent = `
+    //       *:fullscreen::backdrop {
+    //         background-color: transparent;
+    //       }
+    //       .Chrome-Full-Screen-Exit-Instruction {
+    //         display: none !important;
+    //       }
+    //       .Full-Screen-Exit-Instruction {
+    //         display: none !important;
+    //       }
+    //       div[class*="fullscreen-exit"],
+    //       div[class*="fullscreen-notification"],
+    //       div[class*="exit-fullscreen"],
+    //       div[id*="fullscreen-exit"],
+    //       div[id*="fullscreen-notification"] {
+    //         display: none !important;
+    //       }
+    //     `;
+    // document.head.appendChild(style);
   },
 });
