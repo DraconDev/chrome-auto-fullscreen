@@ -30,8 +30,27 @@ function App() {
   return (
     <div className="w-64 p-4 bg-gray-50">
       <div className="flex flex-col items-center space-y-4">
-        <h1 className="text-lg font-semibold text-gray-800">Auto Fullscreen</h1>
-
+        <div className="flex">
+          <h1 className="text-lg font-semibold text-gray-800">
+            Auto Fullscreen
+          </h1>{" "}
+          <div className="flex justify-end w-full">
+            <a
+              href="https://ko-fi.com/adamdracon"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block transition-transform transform hover:scale-125"
+            >
+              <svg
+                className="w-6 h-6 text-[#FF5E5B]"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+              </svg>
+            </a>
+          </div>
+        </div>
         <div className="flex items-center justify-between w-full px-2">
           <span className="text-sm text-gray-600">
             {state?.enabled ? "Enabled" : "Disabled"}
@@ -56,7 +75,6 @@ function App() {
             />
           </button>
         </div>
-
         <div className="w-full pt-3 border-t border-gray-200">
           <div className="space-y-2 text-sm text-gray-600">
             <p className="flex items-center">
@@ -92,23 +110,6 @@ function App() {
               Move to top edge to exit
             </p>
           </div>
-        </div>
-
-        <div className="flex justify-end w-full">
-          <a
-            href="https://ko-fi.com/adamdracon"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block transition-transform transform hover:scale-125"
-          >
-            <svg
-              className="w-6 h-6 text-[#FF5E5B]"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            </svg>
-          </a>
         </div>
       </div>
     </div>
