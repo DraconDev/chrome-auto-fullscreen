@@ -37,6 +37,13 @@ export default defineContentScript({
       }
     };
 
+    // Function to toggle enabled state
+    const toggleEnabled = async () => {
+      const currentState = await store.getValue();
+      const newState = { ...currentState, enabled: !currentState.enabled };
+      await store.setValue(newState);
+    };
+
     // Track fullscreen state changes
     const handleFullscreenChange = () => {
       isFullscreen = !!document.fullscreenElement;
@@ -89,6 +96,14 @@ export default defineContentScript({
       }
     };
 
+    // Keyboard shortcut handler (Alt+F)
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.altKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        toggleEnabled();
+      }
+    };
+
     // Watch for changes in enabled state
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
@@ -103,6 +118,7 @@ export default defineContentScript({
     document.body.addEventListener("mouseleave", handleMouseLeave);
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("keydown", handleKeyPress);
 
     // Initialize state and check if we should be fullscreen
     isFullscreen = !!document.fullscreenElement;
@@ -117,6 +133,7 @@ export default defineContentScript({
       document.body.removeEventListener("mouseleave", handleMouseLeave);
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("keydown", handleKeyPress);
       if (hoverTimeout !== null) {
         clearTimeout(hoverTimeout);
       }

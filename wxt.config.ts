@@ -6,7 +6,7 @@ export default defineConfig({
     name: "Auto Fullscreen",
     description:
       "Automatically enters fullscreen mode when hovering over webpages. Move cursor to top to exit. Simple and intuitive.",
-    version: "0.0.16",
+    version: "0.0.17",
     permissions: ["storage"],
     host_permissions: ["<all_urls>"],
     icons: {
