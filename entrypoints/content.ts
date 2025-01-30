@@ -52,7 +52,7 @@ export default defineContentScript({
         if (e.clientY <= TOP_THRESHOLD) {
           exitFullscreen();
         }
-      }, 30); // Small delay to prevent flickering
+      }, 100); // Small delay to prevent flickering
     };
 
     // Mouse hover handler with improved timing
