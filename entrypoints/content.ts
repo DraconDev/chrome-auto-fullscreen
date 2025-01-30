@@ -18,7 +18,7 @@ export default defineContentScript({
           await document.exitFullscreen();
         }
         // Enter fullscreen
-        else if (e.clientY >= TOP_ZONE && ) {
+        else if (e.clientY >= TOP_ZONE) {
           await document.documentElement.requestFullscreen();
         }
       } catch (error) {
