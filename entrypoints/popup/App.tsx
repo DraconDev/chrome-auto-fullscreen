@@ -30,7 +30,7 @@ function App() {
   return (
     <div className="w-64 p-4 bg-gray-50">
       <div className="flex flex-col items-center space-y-4">
-        <div className="flex w-full px-2">
+        <div className="flex items-center w-full px-2">
           <h1 className="flex text-lg font-semibold text-gray-800 grow">
             Auto Fullscreen
           </h1>{" "}
