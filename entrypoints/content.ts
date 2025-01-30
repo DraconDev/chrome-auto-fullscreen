@@ -37,13 +37,11 @@ export default defineContentScript({
     // Function to enter fullscreen with error handling
     const enterFullscreen = async () => {
       try {
-        console.log("Attempting to enter fullscreen...");
         const element = document.documentElement;
         if (!isFullscreen && element.requestFullscreen) {
           await element.requestFullscreen();
           isFullscreen = true;
           wasFullscreenBeforeLeaving = true;
-          console.log("Entered fullscreen successfully");
         }
       } catch (error) {
         console.error("Failed to enter fullscreen:", error);
@@ -66,86 +64,94 @@ export default defineContentScript({
     // Track fullscreen state changes
     const handleFullscreenChange = () => {
       isFullscreen = !!document.fullscreenElement;
-      console.log("Fullscreen state changed:", isFullscreen);
       if (!isFullscreen) {
         wasFullscreenBeforeLeaving = false;
       }
     };
 
-    // Handle all mouse movement
-    const handleMouseMove = (e: MouseEvent) => {
+    // Check if should be fullscreen based on mouse position
+    const checkShouldBeFullscreen = (y: number) => {
       if (!isEnabled) return;
-      console.log("Mouse move detected, Y:", e.clientY);
 
-      // Always exit when at top
-      if (e.clientY <= TOP_THRESHOLD) {
-        if (isFullscreen) {
-          exitFullscreen();
-        }
-        return;
-      }
-
-      // Otherwise, always try to enter fullscreen
-      if (!isFullscreen) {
-        enterFullscreen();
-      }
-    };
-
-    // Handle mouse enter (for re-entering the window)
-    const handleMouseEnter = (e: MouseEvent) => {
-      if (!isEnabled) return;
-      console.log("Mouse entered window");
-
-      // If entering not at the top, go fullscreen
-      if (e.clientY > TOP_THRESHOLD) {
-        enterFullscreen();
-      }
-    };
-
-    // Handle page visibility changes
-    const handleVisibilityChange = () => {
-      console.log("Visibility changed:", !document.hidden);
-      if (document.hidden) {
+      if (y <= TOP_THRESHOLD) {
         if (isFullscreen) {
           exitFullscreen();
         }
       } else {
-        // When returning to the page, if it was fullscreen before, re-enter immediately
-        if (wasFullscreenBeforeLeaving && isEnabled) {
+        if (!isFullscreen) {
           enterFullscreen();
         }
       }
     };
 
+    // Handle mouse events
+    const handleMouseMove = (e: MouseEvent) => {
+      checkShouldBeFullscreen(e.clientY);
+    };
+
+    const handleMouseEnter = (e: MouseEvent) => {
+      checkShouldBeFullscreen(e.clientY);
+    };
+
+    const handleMouseOver = (e: MouseEvent) => {
+      checkShouldBeFullscreen(e.clientY);
+    };
+
+    // Handle page visibility changes
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (isFullscreen) {
+          exitFullscreen();
+        }
+      } else {
+        // When returning to the page, check current mouse position
+        const mouseY =
+          (window as any).mouseY ?? Math.floor(window.innerHeight / 2);
+        checkShouldBeFullscreen(mouseY);
+      }
+    };
+
+    // Track mouse position globally
+    const trackMousePosition = (e: MouseEvent) => {
+      (window as any).mouseY = e.clientY;
+    };
+
     // Watch for changes in enabled state
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
-      console.log("Enabled state changed:", isEnabled);
       if (!isEnabled && isFullscreen) {
         exitFullscreen();
+      } else if (isEnabled) {
+        // Check current mouse position when enabled
+        const mouseY =
+          (window as any).mouseY ?? Math.floor(window.innerHeight / 2);
+        checkShouldBeFullscreen(mouseY);
       }
     });
 
-    // Set up persistent event listeners
+    // Set up event listeners
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
     document.addEventListener("mouseenter", handleMouseEnter, {
       passive: true,
     });
+    document.addEventListener("mouseover", handleMouseOver, { passive: true });
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("mousemove", trackMousePosition, {
+      passive: true,
+    });
 
-    // Try to enter fullscreen immediately if mouse is in the window
+    // Initial check on load
     window.requestAnimationFrame(() => {
-      const mouseEvent = new MouseEvent("mousemove", {
-        clientY: Math.floor(window.innerHeight / 2), // Middle of the window
-      });
-      handleMouseMove(mouseEvent);
+      checkShouldBeFullscreen(Math.floor(window.innerHeight / 2));
     });
 
     // Initialize state
     isFullscreen = !!document.fullscreenElement;
-    if (isEnabled && !document.hidden && wasFullscreenBeforeLeaving) {
-      enterFullscreen();
+    if (isEnabled && !document.hidden) {
+      const mouseY =
+        (window as any).mouseY ?? Math.floor(window.innerHeight / 2);
+      checkShouldBeFullscreen(mouseY);
     }
   },
 });
