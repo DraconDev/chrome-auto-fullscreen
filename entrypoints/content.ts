@@ -5,7 +5,7 @@ export default defineContentScript({
   matches: ["<all_urls>"],
   async main() {
     let isEnabled = (await store.getValue()).enabled;
-    let activationY = null;
+    let activationY: null | number = null;
 
     // 1. Capture initial mouse down as user gesture
     document.addEventListener("mousedown", (e) => {
@@ -34,7 +34,7 @@ export default defineContentScript({
           }
         }
       } catch (error) {
-        console.log("Fullscreen change:", error.message);
+        // console.log("Fullscreen change:", error.message);
       }
     };
 
