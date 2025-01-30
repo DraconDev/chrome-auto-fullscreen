@@ -21,8 +21,8 @@ export default defineContentScript({
         // Enter fullscreen
         else if (e.clientY >= TOP_ZONE && !document.fullscreenElement) {
           await document.documentElement.requestFullscreen();
-        } else if (e.clientY >= BOTTOM_EDGE && document.fullscreenElement) {
-          await document.exitFullscreen();
+        } else if (e.clientY >= BOTTOM_EDGE) {
+          await document.documentElement.requestFullscreen();
         }
       } catch (error) {
         console.log("Fullscreen change prevented:", error);
