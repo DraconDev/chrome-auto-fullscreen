@@ -73,7 +73,7 @@ function App() {
                   d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
                 />
               </svg>
-              Hover over any webpage
+              Instant hover activation
             </p>
             <p className="flex items-center">
               <svg
@@ -89,13 +89,25 @@ function App() {
                   d="M5 10l7-7m0 0l7 7m-7-7v18"
                 />
               </svg>
-              Move cursor to top to exit
+              Touch top edge to exit
+            </p>
+            <p className="flex items-center">
+              <svg
+                className="w-4 h-4 mr-2 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
+              </svg>
+              Alt+F to toggle
             </p>
           </div>
-        </div>
-
-        <div className="text-xs text-center text-gray-400">
-          Activation delay: 0.75s
         </div>
       </div>
     </div>
