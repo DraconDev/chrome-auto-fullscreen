@@ -7,7 +7,6 @@ export default defineContentScript({
     let isFullscreen = false;
     let isEnabled = (await store.getValue()).enabled;
     let wasFullscreenBeforeLeaving = false;
-    let isDragging = false;
     const TOP_THRESHOLD = 1; // 1px threshold for faster exit
 
     // Hide fullscreen message
@@ -70,32 +69,22 @@ export default defineContentScript({
       }
     };
 
-    // Mouse handlers
-    const handleMouseDown = () => {
-      isDragging = true;
-      if (isEnabled && !isFullscreen) {
-        enterFullscreen();
-      }
-    };
-
-    const handleMouseUp = () => {
-      isDragging = false;
-    };
-
+    // Handle all mouse movement
     const handleMouseMove = (e: MouseEvent) => {
       if (!isEnabled) return;
 
-      if (isFullscreen && e.clientY <= TOP_THRESHOLD) {
-        exitFullscreen();
-      } else if (!isFullscreen && (isDragging || e.buttons > 0)) {
+      // Always exit when at top
+      if (e.clientY <= TOP_THRESHOLD) {
+        if (isFullscreen) {
+          exitFullscreen();
+        }
+        return;
+      }
+
+      // Otherwise, always try to enter fullscreen
+      if (!isFullscreen) {
         enterFullscreen();
       }
-    };
-
-    // Mouse enter/over handlers for non-drag activation
-    const activateFullscreen = () => {
-      if (!isEnabled || isFullscreen) return;
-      enterFullscreen();
     };
 
     // Handle page visibility changes
@@ -120,41 +109,15 @@ export default defineContentScript({
       }
     });
 
-    // Add event listeners
-    document.addEventListener("mousedown", handleMouseDown, { passive: true });
-    document.addEventListener("mouseup", handleMouseUp, { passive: true });
+    // Set up persistent event listeners
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
-    document.addEventListener("mouseover", activateFullscreen, {
-      passive: true,
-    });
-    document.addEventListener("mouseenter", activateFullscreen, {
-      passive: true,
-    });
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
-    // Also track drag end outside window
-    window.addEventListener("blur", handleMouseUp, { passive: true });
-
-    // Initialize state and check if we should be fullscreen
+    // Initialize state
     isFullscreen = !!document.fullscreenElement;
     if (isEnabled && !document.hidden && wasFullscreenBeforeLeaving) {
       enterFullscreen();
     }
-
-    // Cleanup function
-    return () => {
-      document.removeEventListener("mousedown", handleMouseDown);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseover", activateFullscreen);
-      document.removeEventListener("mouseenter", activateFullscreen);
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("blur", handleMouseUp);
-      if (style.parentNode) {
-        style.parentNode.removeChild(style);
-      }
-    };
   },
 });
