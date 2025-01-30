@@ -28,19 +28,23 @@ export default defineContentScript({
     `;
     document.head.appendChild(style);
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMouseMove = async (e: MouseEvent) => {
       if (!isEnabled) return;
 
       const TOP_EDGE = 1;
-      const TOP_ZONE = Math.floor(window.innerHeight * 0.1); // Top 10%
+      const TOP_ZONE = Math.floor(window.innerHeight * 0.1);
 
-      // Exit fullscreen when at very top
-      if (e.clientY <= TOP_EDGE && document.fullscreenElement) {
-        document.exitFullscreen();
-      }
-      // Enter fullscreen when below top 10%
-      else if (e.clientY >= TOP_ZONE && !document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
+      try {
+        // Exit fullscreen
+        if (e.clientY <= TOP_EDGE && document.fullscreenElement) {
+          await document.exitFullscreen();
+        }
+        // Enter fullscreen
+        else if (e.clientY >= TOP_ZONE && !document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch (error) {
+        console.log("Fullscreen change prevented:", error);
       }
     };
 
