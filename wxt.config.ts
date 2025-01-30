@@ -5,9 +5,9 @@ export default defineConfig({
   manifest: {
     name: "Auto Fullscreen",
     description:
-      "Automatically enters fullscreen on hover and exits when mouse moves to top of screen",
-    version: "0.0.8",
-    permissions: ["storage", "fullscreen"],
+      "Automatically enters fullscreen mode when hovering over webpages. Move cursor to top to exit. Simple and intuitive.",
+    version: "0.0.9",
+    permissions: ["storage"],
     host_permissions: ["<all_urls>"],
     icons: {
       "16": "icon/16.png",
@@ -25,6 +25,14 @@ export default defineConfig({
         "128": "icon/128.png",
       },
       default_title: "Auto Fullscreen",
+    },
+    commands: {
+      toggle_enabled: {
+        suggested_key: {
+          default: "Alt+F",
+        },
+        description: "Toggle Auto Fullscreen",
+      },
     },
   },
   modules: ["@wxt-dev/module-react"],
