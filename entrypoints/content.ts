@@ -19,9 +19,10 @@ export default defineContentScript({
           await document.exitFullscreen();
         }
         // Enter fullscreen
-        else if (e.clientY >= TOP_ZONE && !document.fullscreenElement) {
-          await document.documentElement.requestFullscreen();
-        } else if (e.clientY >= BOTTOM_EDGE) {
+        // else if (e.clientY >= TOP_ZONE && !document.fullscreenElement) {
+        //   await document.documentElement.requestFullscreen();
+        // }
+        else if (e.clientY >= BOTTOM_EDGE) {
           await document.documentElement.requestFullscreen();
         }
       } catch (error) {
