@@ -28,19 +28,18 @@ function App() {
   };
 
   return (
-    <div className="w-64 p-4 bg-gray-50">
+    <div className="w-64 p-4 bg-gray-900">
       <div className="flex flex-col items-center space-y-4">
-        <h1 className="flex text-lg font-semibold text-gray-800 grow">
-          Auto Fullscreen
-        </h1>{" "}
+        <h1 className="text-lg font-semibold text-white">Auto Fullscreen</h1>
+
         <div className="flex items-center justify-between w-full px-2">
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-300">
             {state?.enabled ? "Enabled" : "Disabled"}
           </span>
           <button
             onClick={toggleEnabled}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                            ${state?.enabled ? "bg-blue-600" : "bg-gray-300"}`}
+                            ${state?.enabled ? "bg-blue-500" : "bg-gray-600"}`}
             aria-label={
               state?.enabled
                 ? "Disable Auto Fullscreen"
@@ -57,8 +56,9 @@ function App() {
             />
           </button>
         </div>
-        <div className="w-full pt-3 border-t border-gray-200">
-          <div className="space-y-2 text-sm text-gray-600">
+
+        <div className="w-full pt-3 border-t border-gray-700">
+          <div className="space-y-2 text-sm text-gray-300">
             <p className="flex items-center">
               <svg
                 className="w-4 h-4 mr-2 text-gray-400"
@@ -93,6 +93,7 @@ function App() {
             </p>
           </div>
         </div>
+
         <div className="flex justify-end w-full">
           <a
             href="https://ko-fi.com/adamdracon"
