@@ -6,7 +6,7 @@ export default defineConfig({
     name: "Auto Fullscreen",
     description:
       "Automatically enters fullscreen mode when hovering over webpages. Move cursor to top to exit. Simple and intuitive.",
-    version: "0.0.18",
+    version: "0.0.19",
     permissions: ["storage"],
     host_permissions: ["<all_urls>"],
     icons: {
@@ -25,14 +25,6 @@ export default defineConfig({
         "128": "icon/128.png",
       },
       default_title: "Auto Fullscreen",
-    },
-    commands: {
-      toggle_enabled: {
-        suggested_key: {
-          default: "Alt+F",
-        },
-        description: "Toggle Auto Fullscreen",
-      },
     },
   },
   modules: ["@wxt-dev/module-react"],
