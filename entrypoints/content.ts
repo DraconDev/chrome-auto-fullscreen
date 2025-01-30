@@ -10,7 +10,7 @@ export default defineContentScript({
       if (!isEnabled) return;
 
       const TOP_EDGE = 1;
-      const TOP_ZONE = Math.floor(window.innerHeight * 0.1);
+      const TOP_ZONE = Math.floor(window.innerHeight * 0.05);
 
       try {
         // Exit fullscreen
