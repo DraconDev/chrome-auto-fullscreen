@@ -27,6 +27,14 @@ function App() {
     }
   };
 
+  const toggleInterceptFirstClick = async () => {
+    if (state) {
+      const newState = { ...state, interceptFirstClick: !state.interceptFirstClick };
+      await store.setValue(newState);
+      setState(newState);
+    }
+  };
+
   return (
     <div className="w-64 p-4 bg-gray-900">
       <div className="flex flex-col items-center space-y-4">
@@ -50,6 +58,31 @@ function App() {
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
                                 ${
                                   state?.enabled
+                                    ? "translate-x-6"
+                                    : "translate-x-1"
+                                }`}
+            />
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between w-full px-2">
+          <span className="text-sm text-gray-300">
+            Block first click
+          </span>
+          <button
+            onClick={toggleInterceptFirstClick}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
+                            ${state?.interceptFirstClick ? "bg-blue-500" : "bg-gray-600"}`}
+            aria-label={
+              state?.interceptFirstClick
+                ? "Allow first click in fullscreen"
+                : "Block first click in fullscreen"
+            }
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                                ${
+                                  state?.interceptFirstClick
                                     ? "translate-x-6"
                                     : "translate-x-1"
                                 }`}
