@@ -69,7 +69,7 @@ function App() {
         </div>
 
         <div className="flex items-center justify-between w-full px-2">
-          <span className="text-sm text-gray-300">Block first click</span>
+          <span className="text-sm text-gray-300">Only enter fullscreen</span>
           <button
             onClick={toggleInterceptFirstClick}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
@@ -80,8 +80,8 @@ function App() {
                             }`}
             aria-label={
               state?.interceptFirstClick
-                ? "Allow first click in fullscreen"
-                : "Block first click in fullscreen"
+                ? "Allow clicks to also trigger page elements"
+                : "Only enter fullscreen on click (don't trigger page elements)"
             }
           >
             <span
@@ -129,6 +129,24 @@ function App() {
               </svg>
               Move to top edge to exit
             </p>
+            {state?.interceptFirstClick && (
+              <p className="flex items-center">
+                <svg
+                  className="w-4 h-4 mr-2 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Clicks only enter fullscreen (won't trigger elements)
+              </p>
+            )}
           </div>
         </div>
 

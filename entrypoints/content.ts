@@ -59,7 +59,7 @@ export default defineContentScript({
           e.stopPropagation();
           e.preventDefault();
         }
-        
+
         // Enter fullscreen mode
         document.documentElement.requestFullscreen();
         return;
