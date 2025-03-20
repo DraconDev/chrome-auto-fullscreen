@@ -96,56 +96,63 @@ function App() {
         </div>
 
         <div className="w-full pt-3 border-t border-gray-700">
-          <div className="space-y-2 text-sm text-gray-300">
-            <p className="flex items-center">
-              <svg
-                className="w-4 h-4 mr-2 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
-                />
-              </svg>
-              Click anywhere to enter fullscreen
-            </p>
-            <p className="flex items-center">
-              <svg
-                className="w-4 h-4 mr-2 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 10l7-7m0 0l7 7m-7-7v18"
-                />
-              </svg>
-              Move to top edge to exit
-            </p>
+          <div className="space-y-3 text-sm text-gray-300">
+            <div className="flex items-start">
+              <div className="flex items-center justify-center flex-shrink-0 w-6 h-6">
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
+                  />
+                </svg>
+              </div>
+              <span className="ml-2">Click anywhere to enter fullscreen</span>
+            </div>
+            
+            <div className="flex items-start">
+              <div className="flex items-center justify-center flex-shrink-0 w-6 h-6">
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 10l7-7m0 0l7 7m-7-7v18"
+                  />
+                </svg>
+              </div>
+              <span className="ml-2">Move to top edge to exit</span>
+            </div>
 
-            <p className="flex items-center">
-              <svg
-                className="w-4 h-4 mr-2 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              First click on page only activates fullscreen
-            </p>
+            <div className="flex items-start">
+              <div className="flex items-center justify-center flex-shrink-0 w-6 h-6">
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <span className="ml-2">First click on page only activates fullscreen</span>
+            </div>
           </div>
         </div>
 
