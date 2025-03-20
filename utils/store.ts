@@ -4,7 +4,7 @@ import { Store } from "@/types/types";
 export const defaultStore: Store = {
   env: "",
   enabled: true, // Enable by default
-  interceptFirstClick: true, // Disabled by default
+  interceptFirstClick: true, // Enable by default
 };
 
 export const store = storage.defineItem<Store>("sync:store", {
