@@ -47,7 +47,7 @@ export default defineContentScript({
     };
 
     // Track fullscreen changes to reset first click state
-    document.addEventListener('fullscreenchange', () => {
+    document.addEventListener("fullscreenchange", () => {
       if (document.fullscreenElement) {
         // Entered fullscreen
         isFirstClickAfterFullscreen = true;
@@ -62,17 +62,24 @@ export default defineContentScript({
       if (!isEnabled) return;
 
       // If we're not in fullscreen, enter fullscreen
-      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      if (
+        !document.fullscreenElement &&
+        document.documentElement.requestFullscreen
+      ) {
         document.documentElement.requestFullscreen();
         return;
       }
 
       // If we're in fullscreen and interceptFirstClick is enabled
-      if (document.fullscreenElement && interceptFirstClick && isFirstClickAfterFullscreen) {
+      if (
+        document.fullscreenElement &&
+        interceptFirstClick &&
+        isFirstClickAfterFullscreen
+      ) {
         // Prevent the first click after entering fullscreen
         e.stopPropagation();
         e.preventDefault();
-        
+
         // Mark that we've used up the first click
         isFirstClickAfterFullscreen = false;
         return;
@@ -83,7 +90,7 @@ export default defineContentScript({
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
       interceptFirstClick = newValue.interceptFirstClick;
-      
+
       if (!isEnabled && document.fullscreenElement && document.exitFullscreen) {
         document.exitFullscreen();
       }

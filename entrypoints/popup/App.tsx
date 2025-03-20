@@ -29,7 +29,10 @@ function App() {
 
   const toggleInterceptFirstClick = async () => {
     if (state) {
-      const newState = { ...state, interceptFirstClick: !state.interceptFirstClick };
+      const newState = {
+        ...state,
+        interceptFirstClick: !state.interceptFirstClick,
+      };
       await store.setValue(newState);
       setState(newState);
     }
@@ -66,13 +69,15 @@ function App() {
         </div>
 
         <div className="flex items-center justify-between w-full px-2">
-          <span className="text-sm text-gray-300">
-            Block first click
-          </span>
+          <span className="text-sm text-gray-300">Block first click</span>
           <button
             onClick={toggleInterceptFirstClick}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                            ${state?.interceptFirstClick ? "bg-blue-500" : "bg-gray-600"}`}
+                            ${
+                              state?.interceptFirstClick
+                                ? "bg-blue-500"
+                                : "bg-gray-600"
+                            }`}
             aria-label={
               state?.interceptFirstClick
                 ? "Allow first click in fullscreen"
