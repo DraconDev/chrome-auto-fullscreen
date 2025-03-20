@@ -7,7 +7,6 @@ export default defineContentScript({
     let isEnabled = (await store.getValue()).enabled;
     let interceptFirstClick = (await store.getValue()).interceptFirstClick;
     const TOP_EDGE = 1; // 1px threshold for exit
-    let isFirstClickAfterFullscreen = false;
 
     // Hide fullscreen message
     const style = document.createElement("style");
@@ -46,18 +45,7 @@ export default defineContentScript({
       }
     };
 
-    // Track fullscreen changes to reset first click state
-    document.addEventListener("fullscreenchange", () => {
-      if (document.fullscreenElement) {
-        // Entered fullscreen
-        isFirstClickAfterFullscreen = true;
-      } else {
-        // Exited fullscreen
-        isFirstClickAfterFullscreen = false;
-      }
-    });
-
-    // Handle click for entering fullscreen or intercepting first click
+    // Handle click for entering fullscreen
     const handleClick = (e: MouseEvent) => {
       if (!isEnabled) return;
 
@@ -66,24 +54,18 @@ export default defineContentScript({
         !document.fullscreenElement &&
         document.documentElement.requestFullscreen
       ) {
+        // If the intercept option is enabled, prevent the default click action
+        if (interceptFirstClick) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+        
+        // Enter fullscreen mode
         document.documentElement.requestFullscreen();
         return;
       }
 
-      // If we're in fullscreen and interceptFirstClick is enabled
-      if (
-        document.fullscreenElement &&
-        interceptFirstClick &&
-        isFirstClickAfterFullscreen
-      ) {
-        // Prevent the first click after entering fullscreen
-        e.stopPropagation();
-        e.preventDefault();
-
-        // Mark that we've used up the first click
-        isFirstClickAfterFullscreen = false;
-        return;
-      }
+      // When in fullscreen, all clicks work normally (no interception)
     };
 
     // Watch for changes in settings
