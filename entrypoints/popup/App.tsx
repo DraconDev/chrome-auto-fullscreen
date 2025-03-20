@@ -69,7 +69,7 @@ function App() {
         </div>
 
         <div className="flex items-center justify-between w-full px-2">
-          <span className="text-sm text-gray-300">First click only enters fullscreen</span>
+          <span className="text-sm text-gray-300">Click = Fullscreen only</span>
           <button
             onClick={toggleInterceptFirstClick}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
