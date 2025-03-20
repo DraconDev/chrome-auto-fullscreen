@@ -115,7 +115,7 @@ function App() {
               </div>
               <span className="ml-2">Click anywhere to enter fullscreen</span>
             </div>
-            
+
             <div className="flex items-start">
               <div className="flex items-center justify-center flex-shrink-0 w-6 h-6">
                 <svg
@@ -151,7 +151,9 @@ function App() {
                   />
                 </svg>
               </div>
-              <span className="ml-2">First click on page only activates fullscreen</span>
+              <span className="ml-2">
+                First page click only activates fullscreen
+              </span>
             </div>
           </div>
         </div>
