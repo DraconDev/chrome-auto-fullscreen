@@ -69,9 +69,7 @@ function App() {
         </div>
 
         <div className="flex items-center justify-between w-full px-2">
-          <span className="text-sm text-gray-300">
-            First click just fullscreen
-          </span>
+          <span className="text-sm text-gray-300">Click protection</span>
           <button
             onClick={toggleInterceptFirstClick}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
@@ -82,9 +80,11 @@ function App() {
                             }`}
             aria-label={
               state?.interceptFirstClick
-                ? "First click only enters fullscreen"
-                : "First click can interact with page"
+                ? "Disable click protection"
+                : "Enable click protection"
             }
+          >
+            <span
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
