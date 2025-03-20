@@ -69,7 +69,7 @@ function App() {
         </div>
 
         <div className="flex items-center justify-between w-full px-2">
-          <span className="text-sm text-gray-300">Prevent click-through</span>
+          <span className="text-sm text-gray-300">Only enter fullscreen</span>
           <button
             onClick={toggleInterceptFirstClick}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
@@ -80,8 +80,8 @@ function App() {
                             }`}
             aria-label={
               state?.interceptFirstClick
-                ? "Disable preventing click-through"
-                : "Enable preventing click-through"
+                ? "Allow clicks to also trigger page elements"
+                : "Only enter fullscreen on click (don't trigger page elements)"
             }
           >
             <span
@@ -144,7 +144,7 @@ function App() {
                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                Clicks won't interact with page elements
+                Clicks only enter fullscreen (won't trigger elements)
               </p>
             )}
           </div>
