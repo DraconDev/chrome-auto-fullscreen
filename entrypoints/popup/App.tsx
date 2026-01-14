@@ -139,7 +139,7 @@ function App() {
                 type="range"
                 min="100"
                 max="1000"
-                step="50"
+                step="20"
                 value={state?.longPressDelay || 200}
                 onChange={(e) =>
                   updateState({ longPressDelay: parseInt(e.target.value) })
