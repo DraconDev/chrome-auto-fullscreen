@@ -10,6 +10,8 @@ Why Auto Fullscreen?
 
 🛡️ INTERACTIVE PROTECTION: Built-in safety (default: off) allows you to block long-press activation on buttons or links, giving you the power to choose how you browse.
 
+↖️ EFFORTLESS EXIT: No more searching for tiny buttons. Just move your cursor to the top edge to exit instantly.
+
 💎 PREMIUM UI: A beautifully crafted, glassmorphic settings panel that feels like a native part of your modern browser.
 
 Perfect for:
