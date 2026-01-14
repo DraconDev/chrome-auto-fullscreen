@@ -98,6 +98,14 @@ function App() {
             checked={!!state?.strictSafety}
             onChange={() => updateState({ strictSafety: !state?.strictSafety })}
           />
+
+          <Toggle
+            label="Exit on top edge"
+            checked={!!state?.topEdgeExitEnabled}
+            onChange={() =>
+              updateState({ topEdgeExitEnabled: !state?.topEdgeExitEnabled })
+            }
+          />
         </div>
 
         {/* Visuals */}

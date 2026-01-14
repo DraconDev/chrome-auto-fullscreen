@@ -9,7 +9,8 @@ export default defineContentScript({
     let strictSafety = (await store.getValue()).strictSafety;
     let longPressDelay = (await store.getValue()).longPressDelay;
     let primaryColor = (await store.getValue()).primaryColor;
-    // const TOP_EDGE = 1; // Removed
+    let topEdgeExitEnabled = (await store.getValue()).topEdgeExitEnabled;
+    const TOP_EDGE_THRESHOLD = 1; // 1px from top
 
     // CSS Variables for dynamic updates
     const updateStyles = () => {
@@ -176,6 +177,18 @@ export default defineContentScript({
     };
 
     const handleMouseMove = (e: MouseEvent) => {
+      // 1. Handle Top Edge Exit
+      if (
+        topEdgeExitEnabled &&
+        document.fullscreenElement &&
+        e.clientY <= TOP_EDGE_THRESHOLD
+      ) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+        return;
+      }
+
       if (!longPressTimer) return;
 
       // Cancel if moved beyond strict threshold
@@ -202,6 +215,7 @@ export default defineContentScript({
       strictSafety = newValue.strictSafety;
       longPressDelay = newValue.longPressDelay;
       primaryColor = newValue.primaryColor;
+      topEdgeExitEnabled = newValue.topEdgeExitEnabled;
       updateStyles();
       if (!isEnabled && document.fullscreenElement && document.exitFullscreen) {
         document.exitFullscreen();
