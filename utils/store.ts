@@ -9,6 +9,7 @@ export const defaultStore: Store = {
   strictSafety: false,
   longPressDelay: 100,
   primaryColor: "#00FFFF",
+  topEdgeExitEnabled: true,
 };
 
 export const store = storage.defineItem<Store>("sync:store", {

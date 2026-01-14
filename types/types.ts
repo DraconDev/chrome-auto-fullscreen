@@ -1,9 +1,13 @@
-export type Store = {
-  env: string;
+export type AppState = {
   enabled: boolean;
   rippleEnabled: boolean;
   smartCursorEnabled: boolean;
   strictSafety: boolean;
   longPressDelay: number;
   primaryColor: string;
+  topEdgeExitEnabled: boolean;
+};
+
+export type Store = AppState & {
+  env: string;
 };
