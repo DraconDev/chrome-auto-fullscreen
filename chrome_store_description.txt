@@ -8,7 +8,7 @@ Why Auto Fullscreen?
 
 🎨 TOTAL CUSTOMIZATION: Adjust "Charge Time" from 0.1s to 1s and pick any theme color to match your personal workspace.
 
-🛡️ INTERACTIVE PROTECTION: Built-in safety (default: off) allows you to block long-press activation on buttons or links, giving you the power to choose how you browse.
+🛡️ INTERACTIVE PROTECTION: Built-in safety (default: on) automatically blocks long-press activation on buttons or links, ensuring you never interrupt your workflow. Toggle off for unrestricted power-user mode.
 
 ↖️ EFFORTLESS EXIT: No more searching for tiny buttons. Just move your cursor to the top edge to exit instantly.
 
