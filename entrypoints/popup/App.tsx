@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
 import { Store } from "@/types/types";
 import { store } from "@/utils/store";
+import { useEffect, useState } from "react";
 
 function App() {
   const [state, setState] = useState<Store | null>(null);
@@ -19,161 +19,165 @@ function App() {
     });
   }, []);
 
-  const toggleEnabled = async () => {
+  const updateState = async (updates: Partial<Store>) => {
     if (state) {
-      const newState = { ...state, enabled: !state.enabled };
+      const newState = { ...state, ...updates };
       await store.setValue(newState);
       setState(newState);
     }
   };
 
-  const toggleInterceptFirstClick = async () => {
-    if (state) {
-      const newState = {
-        ...state,
-        interceptFirstClick: !state.interceptFirstClick,
-      };
-      await store.setValue(newState);
-      setState(newState);
-    }
-  };
+  const Toggle = ({
+    label,
+    checked,
+    onChange,
+  }: {
+    label: string;
+    checked: boolean;
+    onChange: () => void;
+  }) => (
+    <div className="flex items-center justify-between w-full p-3 transition-colors bg-gray-800 rounded-lg hover:bg-gray-750 group">
+      <span className="text-sm font-medium text-gray-200">{label}</span>
+      <button
+        onClick={onChange}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900
+          ${checked ? "bg-blue-600" : "bg-gray-600"}`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+            ${checked ? "translate-x-6" : "translate-x-1"}`}
+        />
+      </button>
+    </div>
+  );
 
   return (
-    <div className="w-64 p-4 bg-gray-900">
-      <div className="flex flex-col items-center space-y-4">
-        <h1 className="text-lg font-semibold text-white">Auto Fullscreen</h1>
+    <div className="min-h-[400px] w-[320px] bg-gray-900 text-white font-sans selection:bg-blue-500 selection:text-white flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-br from-gray-800 to-gray-900 border-b border-gray-700 shadow-md">
+        <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-300">
+          Auto Fullscreen
+        </h1>
+        <div
+          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+            state?.enabled
+              ? "bg-blue-500/20 text-blue-300"
+              : "bg-gray-700 text-gray-400"
+          }`}
+        >
+          {state?.enabled ? "Active" : "Off"}
+        </div>
+      </div>
 
-        <div className="flex items-center justify-between w-full px-2">
-          <span className="text-sm text-gray-300">
-            {state?.enabled ? "Enabled" : "Disabled"}
-          </span>
-          <button
-            onClick={toggleEnabled}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                            ${state?.enabled ? "bg-blue-500" : "bg-gray-600"}`}
-            aria-label={
-              state?.enabled
-                ? "Disable Auto Fullscreen"
-                : "Enable Auto Fullscreen"
-            }
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                                ${
-                                  state?.enabled
-                                    ? "translate-x-6"
-                                    : "translate-x-1"
-                                }`}
-            />
-          </button>
+      <div className="flex-1 p-5 space-y-5 overflow-y-auto custom-scrollbar">
+        {/* Quick Tip */}
+        <div className="p-3 bg-blue-500/5 rounded-xl border border-blue-500/10 shadow-sm">
+          <p className="text-[11px] text-blue-400 leading-relaxed text-center font-medium">
+            Hold left-click <span className="text-white">in place</span> for{" "}
+            <span className="text-cyan-400">
+              {(state?.longPressDelay || 100) / 1000}s
+            </span>{" "}
+            to toggle fullscreen.
+          </p>
         </div>
 
-        <div className="flex items-center justify-between w-full px-2">
-          <span className="text-sm text-gray-300">Click protection</span>
-          <button
-            onClick={toggleInterceptFirstClick}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors
-                            ${
-                              state?.interceptFirstClick
-                                ? "bg-blue-500"
-                                : "bg-gray-600"
-                            }`}
-            aria-label={
-              state?.interceptFirstClick
-                ? "Disable click protection"
-                : "Enable click protection"
-            }
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                                ${
-                                  state?.interceptFirstClick
-                                    ? "translate-x-6"
-                                    : "translate-x-1"
-                                }`}
-            />
-          </button>
+        {/* Main Controls */}
+        <div className="space-y-3">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1">
+            Behavior
+          </h2>
+
+          <Toggle
+            label="Enable Extension"
+            checked={!!state?.enabled}
+            onChange={() => updateState({ enabled: !state?.enabled })}
+          />
+
+          <Toggle
+            label="Block on buttons/links"
+            checked={!!state?.strictSafety}
+            onChange={() => updateState({ strictSafety: !state?.strictSafety })}
+          />
         </div>
 
-        <div className="w-full pt-3 border-t border-gray-700">
-          <div className="space-y-3 text-sm text-gray-300">
-            <div className="flex items-start">
-              <div className="flex items-center justify-center flex-shrink-0 w-6 h-6">
-                <svg
-                  className="w-4 h-4 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"
-                  />
-                </svg>
+        {/* Visuals */}
+        <div className="space-y-3">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1">
+            Visuals
+          </h2>
+          <Toggle
+            label="Charge FX"
+            checked={!!state?.rippleEnabled}
+            onChange={() =>
+              updateState({ rippleEnabled: !state?.rippleEnabled })
+            }
+          />
+
+          {/* Customization */}
+          <div className="pt-2 border-t border-gray-700/50 space-y-3">
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1">
+              Customization
+            </h2>
+
+            {/* Charge Time Slider */}
+            <div className="space-y-1">
+              <div className="flex justify-between items-center text-xs text-gray-300">
+                <span>Charge Time</span>
+                <span className="font-mono text-cyan-400">
+                  {(state?.longPressDelay || 100) / 1000}s
+                </span>
               </div>
-              <span className="ml-2">Click anywhere to enter fullscreen</span>
+              <input
+                type="range"
+                min="50"
+                max="500"
+                step="10"
+                value={state?.longPressDelay || 100}
+                onChange={(e) =>
+                  updateState({ longPressDelay: parseInt(e.target.value) })
+                }
+                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+              />
             </div>
 
-            <div className="flex items-start">
-              <div className="flex items-center justify-center flex-shrink-0 w-6 h-6">
-                <svg
-                  className="w-4 h-4 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 10l7-7m0 0l7 7m-7-7v18"
-                  />
-                </svg>
+            {/* Color Picker */}
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-300">Theme Color</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={state?.primaryColor || "#00FFFF"}
+                  onChange={(e) =>
+                    updateState({ primaryColor: e.target.value })
+                  }
+                  className="w-6 h-6 rounded cursor-pointer bg-transparent border-none p-0"
+                />
               </div>
-              <span className="ml-2">Move to top edge to exit</span>
-            </div>
-
-            <div className="flex items-start">
-              <div className="flex items-center justify-center flex-shrink-0 w-6 h-6">
-                <svg
-                  className="w-4 h-4 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <span className="ml-2">
-                First page click only activates fullscreen
-              </span>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end w-full">
-          <a
-            href="https://ko-fi.com/adamdracon"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block transition-transform transform hover:scale-125"
+        {/* Automation (Removed) */}
+      </div>
+
+      {/* Footer */}
+      <div className="px-6 py-4 bg-gray-900 border-t border-gray-800 flex justify-between items-center text-xs text-gray-500">
+        <span>v1.2.0</span>
+        <a
+          href="https://ko-fi.com/adamdracon"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center space-x-1 text-gray-400 hover:text-[#FF5E5B] transition-colors group"
+        >
+          <span>Support</span>
+          <svg
+            className="w-4 h-4 transition-transform transform group-hover:scale-110 text-[#FF5E5B]"
+            viewBox="0 0 24 24"
+            fill="currentColor"
           >
-            <svg
-              className="w-6 h-6 text-[#FF5E5B]"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-            >
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            </svg>
-          </a>
-        </div>
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+        </a>
       </div>
     </div>
   );

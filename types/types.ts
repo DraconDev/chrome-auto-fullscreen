@@ -1,5 +1,9 @@
 export type Store = {
   env: string;
   enabled: boolean;
-  interceptFirstClick: boolean;
+  rippleEnabled: boolean;
+  smartCursorEnabled: boolean;
+  strictSafety: boolean;
+  longPressDelay: number;
+  primaryColor: string;
 };

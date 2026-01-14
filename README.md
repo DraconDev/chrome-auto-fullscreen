@@ -1,23 +1,18 @@
-# Chrome Extension with WXT, Bun, React, TypeScript & Tailwind CSS
+# Auto Fullscreen
 
-A modern Chrome extension template built with:
-
-- **Bun** - Fast JavaScript runtime and package manager
-- **WXT** - WebExtension Toolkit for building browser extensions
-- **React** - Component-based UI framework
-- **TypeScript** - Type-safe JavaScript
-- **Tailwind CSS** - Utility-first CSS framework
+A premium Chrome extension that maximizes your screen real estate with a fast, intuitive long-press gesture. Intelligently respects your workflow while giving you total control over your immersion.
 
 ## Features
 
-- Modern development stack
-- Type-safe codebase
-- Utility-first styling
-- Chrome storage integration
-- Popup UI with React components
-- Background and content scripts
+- **Turbo Long Press**: Hold left-click <span className="text-white">**in place**</span> for **0.1s** (default) to toggle fullscreen. Custom timing from 0.05s to 0.5s.
+- **Visual Charge Ring**: A subtle ring charges at your cursor for instant feedback. Customizable colors.
+- **Safety Heuristics**: Intelligently ignores text selection. Optional "Block on buttons/links" check for absolute control.
+- **Premium Design**: Modern, glassmorphic UI for effortless configuration.
+- **Developer Ready**: Built with WXT, Bun, React, and TypeScript.
 
 ## Installation
+
+### From Source
 
 1. Clone the repository
 2. Install dependencies:
@@ -26,62 +21,28 @@ A modern Chrome extension template built with:
 bun install
 ```
 
-3. Start development server:
+3. Build the extension:
 
 ```bash
+bun run build
+```
+
+4. Load the unpacked extension from `.output/chrome-mv3` in Chrome (`chrome://extensions` -> Load Unpacked).
+
+## Development
+
+```bash
+# Start dev server
 bun run dev
+
+# Build for production
+bun run build
 ```
-
-## Development Setup
-
-1. Install Tailwind CSS:
-
-```bash
-bun add -D tailwindcss postcss autoprefixer
-```
-
-2. Initialize Tailwind:
-
-```bash
-bunx tailwindcss init -p
-```
-
-3. Configure Tailwind in `tailwind.config.js`:
-
-```js
-content: [
-  "./entrypoints/**/*.{js,ts,jsx,tsx}",
-  "./components/**/*.{js,ts,jsx,tsx}",
-],
-```
-
-## Usage
-
-- **Popup UI**: Located in `entrypoints/popup/`
-- **Background Script**: `entrypoints/background.ts`
-- **Content Script**: `entrypoints/content.ts`
-- **Storage**: Uses `chrome.storage.sync` for persistent data
-
-## Development Best Practices
-
-- Use TypeScript types for all variables and functions
-- Follow Tailwind CSS utility-first approach
-- Implement proper error handling with `try...catch`
-- Use appropriate logging levels:
-  - `console.log()` for info
-  - `console.warn()` for warnings
-  - `console.error()` for errors
-- Optimize background script performance
-- Follow accessibility guidelines (WCAG)
 
 ## Contributing
 
-1. Fork the repository
-2. Create a new branch
-3. Commit your changes
-4. Push to the branch
-5. Create a pull request
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
 
-MIT License
+MIT

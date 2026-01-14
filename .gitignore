@@ -24,3 +24,19 @@ web-ext.config.ts
 *.njsproj
 *.sln
 *.sw?
+
+# --- BEGIN DEMON MANAGED BLOCK ---
+# DANGER: Managed by Demon. Manual changes inside this block will be overwritten.
+# Purpose: patterns for secrets protection & hygiene
+demon/
+*.key
+*.age
+*.pem
+*.p12
+demon/keys/
+demon/shadow/
+*.log
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+# --- END DEMON MANAGED BLOCK ---

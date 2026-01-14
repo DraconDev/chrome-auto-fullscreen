@@ -5,8 +5,8 @@ export default defineConfig({
   manifest: {
     name: "Auto Fullscreen",
     description:
-      "Click anywhere to enter fullscreen mode, move cursor to top edge to exit. Simple and intuitive.",
-    version: "1.1.23",
+      "Turbo Long Press fullscreen toggle. Intelligently respects your workflow with customizable charge timing and colors.",
+    version: "1.2.0",
     permissions: ["storage"],
     host_permissions: ["<all_urls>"],
     icons: {
