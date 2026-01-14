@@ -170,7 +170,7 @@ function App() {
 
       {/* Footer */}
       <div className="px-6 py-4 bg-gray-900 border-t border-gray-800 flex justify-between items-center text-xs text-gray-500">
-        <span>v1.2.0</span>
+        <span>v1.3.0</span>
         <a
           href="https://ko-fi.com/adamdracon"
           target="_blank"
