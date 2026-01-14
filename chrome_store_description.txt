@@ -2,11 +2,11 @@ Stop fumbling for tiny fullscreen buttons. Auto Fullscreen v1.2.0 introduces the
 
 Why Auto Fullscreen?
 
-🚀 TURBO LONG PRESS: A split-second hold (default 0.1s) in place is all it takes. Snappy, responsive, and designed to never conflict with text selection or double-clicks. Any deliberate movement immediately cancels the hold, allowing for perfect text dragging.
+🚀 TURBO LONG PRESS: A split-second hold (default 0.2s) in place is all it takes. Snappy, responsive, and designed to never conflict with text selection or double-clicks. Any deliberate movement immediately cancels the hold, allowing for perfect text dragging.
 
 ⚡ CHARGE FEEDBACK: Watch a subtle, futuristic ring charge up at your cursor. Know exactly when you're about to toggle fullscreen with zero guesswork.
 
-🎨 TOTAL CUSTOMIZATION: Adjust "Charge Time" from 0.05s to 0.5s and pick any theme color to match your personal workspace.
+🎨 TOTAL CUSTOMIZATION: Adjust "Charge Time" from 0.1s to 1s and pick any theme color to match your personal workspace.
 
 🛡️ INTERACTIVE PROTECTION: Built-in safety (default: off) allows you to block long-press activation on buttons or links, giving you the power to choose how you browse.
 

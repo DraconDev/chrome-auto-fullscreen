@@ -4,7 +4,7 @@ A premium Chrome extension that maximizes your screen real estate with a fast, i
 
 ## Features
 
-- **Turbo Long Press**: Hold left-click <span className="text-white">**in place**</span> for **0.1s** (default) to toggle fullscreen. Custom timing from 0.05s to 0.5s.
+- **Turbo Long Press**: Hold left-click <span className="text-white">**in place**</span> for **0.2s** (default) to toggle fullscreen. Custom timing from 0.1s to 1s.
 - **Visual Charge Ring**: A subtle ring charges at your cursor for instant feedback. Customizable colors.
 - **Safety Heuristics**: Intelligently ignores text selection. Optional "Block on buttons/links" check for absolute control.
 - **Top Edge Exit**: Move cursor to the very top edge to seamlessly exit fullscreen mode.
