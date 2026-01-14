@@ -1,4 +1,4 @@
-Stop fumbling for tiny fullscreen buttons. Auto Fullscreen v1.2.0 introduces the world's most intuitive "Turbo Long Press" interaction. Dive into total immersion with a lightning-fast 0.1s hold—anywhere, anytime.
+Stop fumbling for tiny fullscreen buttons. Auto Fullscreen v1.3.0 introduces the world's most intuitive "Turbo Long Press" interaction. Dive into total immersion with a lightning-fast 0.2s hold—anywhere, anytime.
 
 Why Auto Fullscreen?
 
@@ -20,6 +20,6 @@ Perfect for:
 🖼️ Immersive design & photography
 ➕ Anyone who wants a cleaner, distraction-free web
 
-NEW in v1.2: Advanced customization, dynamic color pickers, and the refined "Charge Ring" visual system.
+NEW in v1.3: Advanced customization, dynamic color pickers, and the refined "Charge Ring" visual system.
 
 Maximize your screen. Minimize the clutter. Install Auto Fullscreen today.
