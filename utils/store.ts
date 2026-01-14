@@ -7,7 +7,7 @@ export const defaultStore: Store = {
   rippleEnabled: true, // Enable by default
   smartCursorEnabled: true, // Enable by default
   strictSafety: false,
-  longPressDelay: 100,
+  longPressDelay: 200,
   primaryColor: "#00FFFF",
   topEdgeExitEnabled: true,
 };

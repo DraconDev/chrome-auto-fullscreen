@@ -137,10 +137,10 @@ function App() {
               </div>
               <input
                 type="range"
-                min="50"
-                max="500"
-                step="10"
-                value={state?.longPressDelay || 100}
+                min="100"
+                max="1000"
+                step="50"
+                value={state?.longPressDelay || 200}
                 onChange={(e) =>
                   updateState({ longPressDelay: parseInt(e.target.value) })
                 }
