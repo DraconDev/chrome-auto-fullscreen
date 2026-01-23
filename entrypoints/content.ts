@@ -17,7 +17,7 @@ export default defineContentScript({
       document.documentElement.style.setProperty("--af-color", primaryColor);
       document.documentElement.style.setProperty(
         "--af-delay",
-        `${longPressDelay}ms`
+        `${longPressDelay}ms`,
       );
     };
     updateStyles();
@@ -154,10 +154,10 @@ export default defineContentScript({
           // Strict: Block pointer/move/help/wait.
           if (["pointer", "move", "help", "wait"].includes(style.cursor))
             return;
-          // Strict: Block interactive tags
+          // Strict: Block interactive tags and ARIA roles
           if (
             target.closest(
-              "a, button, input, textarea, select, label, audio, video"
+              "a, button, input, textarea, select, label, audio, video, [role='button'], [role='link'], [role='checkbox'], [role='menuitem'], [role='option'], [role='tab'], [role='slider'], [role='scrollbar'], [role='listbox']",
             )
           )
             return;
@@ -226,6 +226,8 @@ export default defineContentScript({
     document.addEventListener("mousedown", handleMouseDown, { passive: true });
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
     document.addEventListener("mouseup", handleMouseUp, { passive: true });
-    document.addEventListener("dragstart", handleMouseUp, { passive: true }); // Cancel on drag start too
+    document.addEventListener("dragstart", handleMouseUp, { passive: true });
+    document.addEventListener("wheel", handleMouseUp, { passive: true });
+    window.addEventListener("scroll", handleMouseUp, { passive: true });
   },
 });
