@@ -6,6 +6,7 @@ export type AppState = {
   longPressDelay: number;
   primaryColor: string;
   topEdgeExitEnabled: boolean;
+  autoFullscreenEnabled: boolean;
 };
 
 export type Store = AppState & {

@@ -1,25 +1,27 @@
-Stop fumbling for tiny fullscreen buttons. Auto Fullscreen v1.3.0 introduces the world's most intuitive "Turbo Long Press" interaction. Dive into total immersion with a lightning-fast 0.2s hold—anywhere, anytime.
+Auto Fullscreen v1.4.1: The Ultimate Immersion Tool
 
-Why Auto Fullscreen?
+Stop fumbling for tiny buttons. Version 1.4.1 introduces Native Window Mode (F11), making your fullscreen experience truly continuous and distraction-free.
 
-🚀 TURBO LONG PRESS: A split-second hold (default 0.2s) in place is all it takes. Snappy, responsive, and designed to never conflict with text selection or double-clicks. Any deliberate movement immediately cancels the hold, allowing for perfect text dragging.
+Why Auto Fullscreen v1.4.1?
 
-⚡ CHARGE FEEDBACK: Watch a subtle, futuristic ring charge up at your cursor. Know exactly when you're about to toggle fullscreen with zero guesswork.
+🚀 CONTINUOUS FULLSCREEN: Now using Native Window Mode (F11), your fullscreen persists across page loads, link clicks, and navigations. No more jumping in and out of immersion.
 
-🎨 TOTAL CUSTOMIZATION: Adjust "Charge Time" from 0.1s to 1s and pick any theme color to match your personal workspace.
+⚡ AUTO-FULLSCREEN ON LOAD: The extension can now automatically enter fullscreen as soon as you open a page. Set it once and forget it—total immersion is now the default.
 
-🛡️ INTERACTIVE PROTECTION: Built-in safety (default: on) automatically blocks long-press activation on buttons or links, ensuring you never interrupt your workflow. Toggle off for unrestricted power-user mode.
+🛡️ SCROLLBAR PROTECTION: Intelligently ignores the far-right edge of your screen. Scroll through long articles without accidentally triggering the fullscreen toggle.
 
-↖️ EFFORTLESS EXIT: No more searching for tiny buttons. Just move your cursor to the top edge to exit instantly.
+↖️ TOP-EDGE EXIT: Simply move your cursor to the top edge of the screen to exit fullscreen instantly. It's the fastest way to get your browser UI back.
 
-💎 PREMIUM UI: A beautifully crafted, glassmorphic settings panel that feels like a native part of your modern browser.
+🚀 TURBO LONG PRESS: A split-second hold (default 0.2s) anywhere on the page toggles fullscreen. Snappy, responsive, and designed to never conflict with your workflow.
+
+🎨 CUSTOMIZABLE FX: Choose your own theme color and adjust the "Charge Time" (0.1s to 1s) to fit your speed.
+
+💎 PREMIUM GLASSMORPHIC UI: A beautiful settings panel that feels like a native part of your modern browser.
 
 Perfect for:
-🎬 Binge-watching videos
-📖 Deep-reading articles
-🖼️ Immersive design & photography
+🎬 Binge-watching videos without UI interruptions
+📖 Deep-reading long-form content
+🖼️ Browsing galleries and photography
 ➕ Anyone who wants a cleaner, distraction-free web
-
-NEW in v1.3: Advanced customization, dynamic color pickers, and the refined "Charge Ring" visual system.
 
 Maximize your screen. Minimize the clutter. Install Auto Fullscreen today.

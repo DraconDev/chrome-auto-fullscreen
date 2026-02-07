@@ -10,7 +10,13 @@ export default defineContentScript({
     let longPressDelay = (await store.getValue()).longPressDelay;
     let primaryColor = (await store.getValue()).primaryColor;
     let topEdgeExitEnabled = (await store.getValue()).topEdgeExitEnabled;
+    let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
     const TOP_EDGE_THRESHOLD = 1; // 1px from top
+
+    // Auto Fullscreen Logic
+    if (isEnabled && autoFullscreenEnabled) {
+      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+    }
 
     // CSS Variables for dynamic updates
     const updateStyles = () => {
@@ -121,15 +127,7 @@ export default defineContentScript({
     const toggleFullscreen = (x: number, y: number) => {
       // Toggle Logic
       completeCharge(); // Visual Success
-
-      if (
-        !document.fullscreenElement &&
-        document.documentElement.requestFullscreen
-      ) {
-        document.documentElement.requestFullscreen();
-      } else if (document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen();
-      }
+      browser.runtime.sendMessage({ action: "toggleWindowFullscreen" });
     };
 
     const handleMouseDown = (e: MouseEvent) => {
@@ -139,7 +137,11 @@ export default defineContentScript({
       // 2. Ignore if disabled
       if (!isEnabled) return;
 
-      // 3. Ignore non-primary button (only left click)
+      // 3. Ignore if on the far right (scrollbar area)
+      const SCROLLBAR_THRESHOLD = 20; // 20px from right
+      if (e.clientX >= window.innerWidth - SCROLLBAR_THRESHOLD) return;
+
+      // 4. Ignore non-primary button (only left click)
       if (e.button !== 0) return;
 
       // 4. Heuristics (Safe Check)
@@ -177,21 +179,18 @@ export default defineContentScript({
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-      // 1. Handle Top Edge Exit
+      // 1. Handle Top Edge Exit (Early exit if at top)
       if (
         topEdgeExitEnabled &&
-        document.fullscreenElement &&
         e.clientY <= TOP_EDGE_THRESHOLD
       ) {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
+        browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
         return;
       }
 
       if (!longPressTimer) return;
 
-      // Cancel if moved beyond strict threshold
+      // 3. Cancel if moved beyond strict threshold
       const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
       if (dist > MOVEMENT_THRESHOLD) {
         clearTimeout(longPressTimer);
@@ -216,9 +215,10 @@ export default defineContentScript({
       longPressDelay = newValue.longPressDelay;
       primaryColor = newValue.primaryColor;
       topEdgeExitEnabled = newValue.topEdgeExitEnabled;
+      autoFullscreenEnabled = newValue.autoFullscreenEnabled;
       updateStyles();
-      if (!isEnabled && document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen();
+      if (!isEnabled) {
+        browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
       }
     });
 

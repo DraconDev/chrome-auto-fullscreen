@@ -10,6 +10,7 @@ export const defaultStore: Store = {
   longPressDelay: 200,
   primaryColor: "#00FFFF",
   topEdgeExitEnabled: true,
+  autoFullscreenEnabled: true,
 };
 
 export const store = storage.defineItem<Store>("sync:store", {

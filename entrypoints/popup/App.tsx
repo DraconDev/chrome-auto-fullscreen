@@ -94,6 +94,16 @@ function App() {
           />
 
           <Toggle
+            label="Auto-Fullscreen on Load"
+            checked={!!state?.autoFullscreenEnabled}
+            onChange={() =>
+              updateState({
+                autoFullscreenEnabled: !state?.autoFullscreenEnabled,
+              })
+            }
+          />
+
+          <Toggle
             label="Block on buttons/links"
             checked={!!state?.strictSafety}
             onChange={() => updateState({ strictSafety: !state?.strictSafety })}
@@ -170,7 +180,7 @@ function App() {
 
       {/* Footer */}
       <div className="px-6 py-4 bg-gray-900 border-t border-gray-800 flex justify-between items-center text-xs text-gray-500">
-        <span>v1.3.0</span>
+        <span>v1.4.1</span>
         <a
           href="https://ko-fi.com/adamdracon"
           target="_blank"
