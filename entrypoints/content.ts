@@ -218,7 +218,10 @@ export default defineContentScript({
     if (videoClickFullscreen) {
       const videoTarget = (e.target as Element).closest("video");
       if (videoTarget) {
-        toggleVideoFullscreen(videoTarget as HTMLVideoElement);
+        const video = videoTarget as HTMLVideoElement;
+        if (video.paused) {
+          toggleVideoFullscreen(video);
+        }
         return;
       }
     }
