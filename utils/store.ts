@@ -3,14 +3,16 @@ import { storage } from "wxt/storage";
 
 export const defaultStore: Store = {
   env: "",
-  enabled: true, // Enable by default
-  rippleEnabled: true, // Enable by default
-  smartCursorEnabled: true, // Enable by default
+  enabled: true,
+  rippleEnabled: true,
+  smartCursorEnabled: true,
   strictSafety: true,
   longPressDelay: 200,
   primaryColor: "#00FFFF",
   topEdgeExitEnabled: true,
   autoFullscreenEnabled: true,
+  videoClickFullscreen: false,
+  videoKeyFullscreen: true,
 };
 
 export const store = storage.defineItem<Store>("sync:store", {
