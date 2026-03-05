@@ -163,13 +163,16 @@ function App() {
             </h2>
 
             {/* Charge Time Slider */}
-            <div className="space-y-1">
-              <div className="flex justify-between items-center text-xs text-gray-300">
-                <span>Charge Time</span>
-                <span className="font-mono text-cyan-400">
-                  {(state?.longPressDelay || 100) / 1000}s
-                </span>
-              </div>
+        <div className="space-y-1">
+          <div className="flex justify-between items-center text-xs text-gray-300">
+            <span>Charge Time</span>
+            <span className="font-mono text-cyan-400">
+              {state?.longPressDelay === 0
+                ? "instant"
+                : `${(state?.longPressDelay || 100) / 1000}s`
+              }
+            </span>
+          </div>
           <input
             type="range"
             min="0"
