@@ -126,11 +126,66 @@ export default defineContentScript({
     // const PRESS_DELAY = 200; // Legacy hardcoded
     const MOVEMENT_THRESHOLD = 2; // Strict 2px tolerance (effectively same pixel)
 
-    const toggleFullscreen = (x: number, y: number) => {
-      // Toggle Logic
-      completeCharge(); // Visual Success
-      browser.runtime.sendMessage({ action: "toggleWindowFullscreen" });
-    };
+  const toggleFullscreen = (x: number, y: number) => {
+    completeCharge();
+    browser.runtime.sendMessage({ action: "toggleWindowFullscreen" });
+  };
+
+  const toggleVideoFullscreen = (video: HTMLVideoElement) => {
+    const isYouTube = window.location.hostname.includes("youtube.com");
+    const isOdysee = window.location.hostname.includes("odysee.com");
+
+    if (isYouTube) {
+      const player = video.closest(".html5-video-player") as HTMLElement;
+      if (player) {
+        const fsButton = player.querySelector(".ytp-fullscreen-button") as HTMLButtonElement;
+        if (fsButton) {
+          fsButton.click();
+          return;
+        }
+      }
+    }
+
+    if (isOdysee) {
+      const player = video.closest(".vjs-has-started") as HTMLElement;
+      if (player) {
+        const fsButton = player.querySelector(".vjs-fullscreen-control") as HTMLButtonElement;
+        if (fsButton) {
+          fsButton.click();
+          return;
+        }
+      }
+    }
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      video.requestFullscreen();
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (!isEnabled || !videoKeyFullscreen) return;
+    if (e.key.toLowerCase() !== "f") return;
+    if ((e.target as Element).closest("input, textarea, [contenteditable]")) return;
+
+    const videos = document.querySelectorAll("video");
+    let targetVideo: HTMLVideoElement | null = null;
+
+    for (const video of videos) {
+      const rect = video.getBoundingClientRect();
+      const visible = rect.width > 0 && rect.height > 0;
+      if (visible) {
+        targetVideo = video as HTMLVideoElement;
+        break;
+      }
+    }
+
+    if (targetVideo) {
+      e.preventDefault();
+      toggleVideoFullscreen(targetVideo);
+    }
+  };
 
   const handleMouseDown = (e: MouseEvent) => {
     if (longPressTimer) clearTimeout(longPressTimer);
