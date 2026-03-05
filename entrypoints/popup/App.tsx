@@ -145,17 +145,17 @@ function App() {
                   {(state?.longPressDelay || 100) / 1000}s
                 </span>
               </div>
-              <input
-                type="range"
-                min="100"
-                max="1000"
-                step="20"
-                value={state?.longPressDelay || 200}
-                onChange={(e) =>
-                  updateState({ longPressDelay: parseInt(e.target.value) })
-                }
-                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-              />
+          <input
+            type="range"
+            min="0"
+            max="1000"
+            step="20"
+            value={state?.longPressDelay || 200}
+            onChange={(e) =>
+              updateState({ longPressDelay: parseInt(e.target.value) })
+            }
+            className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+          />
             </div>
 
             {/* Color Picker */}
