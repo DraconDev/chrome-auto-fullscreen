@@ -1,0 +1,17 @@
+{
+  "phase": "planning",
+  "execution_enabled": false,
+  "trigger": "none",
+  "trigger_reason": null,
+  "active_slice": null,
+  "active_slice_started_at": null,
+  "completed_slices": [],
+  "failed_slices": [],
+  "slice_attempts": {},
+  "last_checkpoint_at": null,
+  "last_activity_at": null,
+  "stall_recovery_count": 0,
+  "last_report_at": null,
+  "last_heartbeat_at": null,
+  "updated_at": 1772672741
+}

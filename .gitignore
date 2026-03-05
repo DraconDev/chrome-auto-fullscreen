@@ -1,42 +1,44 @@
-# Logs
-logs
+# --- BEGIN DRACON MANAGED BLOCK ---
+# managed by dracon-warden
+**/.freeze
+**/dracon-sync-incidents.jsonl
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-.output
-stats.html
-stats-*.json
-.wxt
-web-ext.config.ts
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# --- BEGIN DEMON MANAGED BLOCK ---
-# DANGER: Managed by Demon. Manual changes inside this block will be overwritten.
-# Purpose: patterns for secrets protection & hygiene
-demon/
-*.key
-*.age
-*.pem
-*.p12
-demon/keys/
-demon/shadow/
-*.log
-npm-debug.log*
-yarn-error.log*
-.DS_Store
-# --- END DEMON MANAGED BLOCK ---
+.direnv/
+.dracon/*
+.git/
+.venv/
+__pycache__/
+build/
+dist/
+node_modules/
+target/
+!*.env
+!.env
+!.env.*
+!config.json
+!config/services.json
+!config/services.test.json
+!config/licenses.json
+!config/licenses.test.json
+!plan/pages/snapshots/*.json
+!plan/pages/templates/*.json
+!.cargo/config.toml
+!*.pem
+!*.key
+!*.age
+!test_secret.txt
+!secrets/**
+!*.pub
+!.dracon/data/
+!.dracon/data/keys/
+!.dracon/data/keys/*.pub
+!Cargo.lock
+!Cargo.toml
+!clippy.toml
+!deny.toml
+!flake.lock
+!flake.nix
+!rust-toolchain.toml
+!rustfmt.toml
+# --- END DRACON MANAGED BLOCK ---
