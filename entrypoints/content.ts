@@ -10,8 +10,10 @@ export default defineContentScript({
     let longPressDelay = (await store.getValue()).longPressDelay;
     let primaryColor = (await store.getValue()).primaryColor;
     let topEdgeExitEnabled = (await store.getValue()).topEdgeExitEnabled;
-    let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
-    const TOP_EDGE_THRESHOLD = 1; // 1px from top
+  let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
+  let videoClickFullscreen = (await store.getValue()).videoClickFullscreen;
+  let videoKeyFullscreen = (await store.getValue()).videoKeyFullscreen;
+  const TOP_EDGE_THRESHOLD = 1; // 1px from top
 
     // Auto Fullscreen Logic
     if (isEnabled && autoFullscreenEnabled) {
