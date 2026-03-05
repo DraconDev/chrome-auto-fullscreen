@@ -72,13 +72,18 @@ function App() {
       <div className="flex-1 p-5 space-y-5 overflow-y-auto custom-scrollbar">
         {/* Quick Tip */}
         <div className="p-3 bg-blue-500/5 rounded-xl border border-blue-500/10 shadow-sm">
-          <p className="text-[11px] text-blue-400 leading-relaxed text-center font-medium">
-            Hold left-click <span className="text-white">in place</span> for{" "}
-            <span className="text-cyan-400">
-              {(state?.longPressDelay || 100) / 1000}s
-            </span>{" "}
-            to toggle fullscreen.
-          </p>
+        <p className="text-[11px] text-blue-400 leading-relaxed text-center font-medium">
+          {state?.longPressDelay === 0
+            ? "Click anywhere to toggle fullscreen instantly."
+            : <>
+                Hold left-click <span className="text-white">in place</span> for{" "}
+                <span className="text-cyan-400">
+                  {(state?.longPressDelay || 100) / 1000}s
+                </span>{" "}
+                to toggle fullscreen.
+              </>
+          }
+        </p>
         </div>
 
         {/* Main Controls */}
