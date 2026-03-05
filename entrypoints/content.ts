@@ -132,53 +132,52 @@ export default defineContentScript({
       browser.runtime.sendMessage({ action: "toggleWindowFullscreen" });
     };
 
-    const handleMouseDown = (e: MouseEvent) => {
-      // 1. Reset
-      if (longPressTimer) clearTimeout(longPressTimer);
+  const handleMouseDown = (e: MouseEvent) => {
+    if (longPressTimer) clearTimeout(longPressTimer);
 
-      // 2. Ignore if disabled
-      if (!isEnabled) return;
+    if (!isEnabled) return;
 
-      // 3. Ignore if on the far right (scrollbar area)
-      const SCROLLBAR_THRESHOLD = 20; // 20px from right
-      if (e.clientX >= window.innerWidth - SCROLLBAR_THRESHOLD) return;
+    const SCROLLBAR_THRESHOLD = 20;
+    if (e.clientX >= window.innerWidth - SCROLLBAR_THRESHOLD) return;
 
-      // 4. Ignore non-primary button (only left click)
-      if (e.button !== 0) return;
+    if (e.button !== 0) return;
 
-      // 4. Heuristics (Safe Check)
-      // Ignore if text is selected (Hard Rule: Always respect active selection)
-      const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) return;
+    const selection = window.getSelection();
+    if (selection && selection.toString().length > 0) return;
 
-      if (strictSafety) {
-        const target = e.target as Element;
-        if (target) {
-          const style = window.getComputedStyle(target);
-          // Strict: Block pointer/move/help/wait.
-          if (["pointer", "move", "help", "wait"].includes(style.cursor))
-            return;
-          // Strict: Block interactive tags and ARIA roles
-          if (
-            target.closest(
-              "a, button, input, textarea, select, label, audio, video, [role='button'], [role='link'], [role='checkbox'], [role='menuitem'], [role='option'], [role='tab'], [role='slider'], [role='scrollbar'], [role='listbox']",
-            )
+    if (strictSafety) {
+      const target = e.target as Element;
+      if (target) {
+        const style = window.getComputedStyle(target);
+        if (["pointer", "move", "help", "wait"].includes(style.cursor))
+          return;
+        if (
+          target.closest(
+            "a, button, input, textarea, select, label, [role='button'], [role='link'], [role='checkbox'], [role='menuitem'], [role='option'], [role='tab'], [role='slider'], [role='scrollbar'], [role='listbox']",
           )
-            return;
-        }
+        )
+          return;
       }
+    }
 
-      // 5. Start Timer & Visuals
-      startX = e.clientX;
-      startY = e.clientY;
+    if (videoClickFullscreen) {
+      const videoTarget = (e.target as Element).closest("video");
+      if (videoTarget) {
+        toggleVideoFullscreen(videoTarget as HTMLVideoElement);
+        return;
+      }
+    }
 
-      startCharge(startX, startY);
+    startX = e.clientX;
+    startY = e.clientY;
 
-      longPressTimer = setTimeout(() => {
-        toggleFullscreen(startX, startY);
-        longPressTimer = null; // Reset after firing
-      }, longPressDelay);
-    };
+    startCharge(startX, startY);
+
+    longPressTimer = setTimeout(() => {
+      toggleFullscreen(startX, startY);
+      longPressTimer = null;
+    }, longPressDelay);
+  };
 
     const handleMouseMove = (e: MouseEvent) => {
       // 1. Handle Top Edge Exit (Early exit if at top)
