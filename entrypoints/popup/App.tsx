@@ -78,7 +78,7 @@ function App() {
             : <>
                 Hold left-click <span className="text-white">in place</span> for{" "}
                 <span className="text-cyan-400">
-                  {(state?.longPressDelay || 100) / 1000}s
+                  {state?.longPressDelay ?? 200}ms
                 </span>{" "}
                 to toggle fullscreen.
               </>
@@ -169,7 +169,7 @@ function App() {
             <span className="font-mono text-cyan-400">
               {state?.longPressDelay === 0
                 ? "instant"
-                : `${(state?.longPressDelay || 100) / 1000}s`
+                : `${state?.longPressDelay ?? 200}ms`
               }
             </span>
           </div>
@@ -178,9 +178,9 @@ function App() {
             min="0"
             max="1000"
             step="20"
-            value={state?.longPressDelay || 200}
+            value={state?.longPressDelay ?? 200}
             onChange={(e) =>
-              updateState({ longPressDelay: parseInt(e.target.value) })
+              updateState({ longPressDelay: parseInt(e.target.value) || 0 })
             }
             className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
           />
