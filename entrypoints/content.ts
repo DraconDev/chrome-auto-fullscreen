@@ -263,27 +263,28 @@ export default defineContentScript({
       }
     };
 
-    // Watch for changes in settings
-    store.watch((newValue) => {
-      isEnabled = newValue.enabled;
-      rippleEnabled = newValue.rippleEnabled;
-      strictSafety = newValue.strictSafety;
-      longPressDelay = newValue.longPressDelay;
-      primaryColor = newValue.primaryColor;
-      topEdgeExitEnabled = newValue.topEdgeExitEnabled;
-      autoFullscreenEnabled = newValue.autoFullscreenEnabled;
-      updateStyles();
-      if (!isEnabled) {
-        browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
-      }
-    });
+  store.watch((newValue) => {
+    isEnabled = newValue.enabled;
+    rippleEnabled = newValue.rippleEnabled;
+    strictSafety = newValue.strictSafety;
+    longPressDelay = newValue.longPressDelay;
+    primaryColor = newValue.primaryColor;
+    topEdgeExitEnabled = newValue.topEdgeExitEnabled;
+    autoFullscreenEnabled = newValue.autoFullscreenEnabled;
+    videoClickFullscreen = newValue.videoClickFullscreen;
+    videoKeyFullscreen = newValue.videoKeyFullscreen;
+    updateStyles();
+    if (!isEnabled) {
+      browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
+    }
+  });
 
-    // Set up event listeners
-    document.addEventListener("mousedown", handleMouseDown, { passive: true });
-    document.addEventListener("mousemove", handleMouseMove, { passive: true });
-    document.addEventListener("mouseup", handleMouseUp, { passive: true });
-    document.addEventListener("dragstart", handleMouseUp, { passive: true });
-    document.addEventListener("wheel", handleMouseUp, { passive: true });
-    window.addEventListener("scroll", handleMouseUp, { passive: true });
+  document.addEventListener("mousedown", handleMouseDown, { passive: true });
+  document.addEventListener("mousemove", handleMouseMove, { passive: true });
+  document.addEventListener("mouseup", handleMouseUp, { passive: true });
+  document.addEventListener("dragstart", handleMouseUp, { passive: true });
+  document.addEventListener("wheel", handleMouseUp, { passive: true });
+  document.addEventListener("keydown", handleKeyDown, { passive: false });
+  window.addEventListener("scroll", handleMouseUp, { passive: true });
   },
 });
