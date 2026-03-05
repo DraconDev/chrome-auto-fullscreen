@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "__scrubbed__": true,
+    "jsx": "react-jsx"
+  },
+  "extends": "./.wxt/tsconfig.json"
+}

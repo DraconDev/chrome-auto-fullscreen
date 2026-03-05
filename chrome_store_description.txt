@@ -1,0 +1,27 @@
+Auto Fullscreen v1.4.1: The Ultimate Immersion Tool
+
+Stop fumbling for tiny buttons. Version 1.4.1 introduces Native Window Mode (F11), making your fullscreen experience truly continuous and distraction-free.
+
+Why Auto Fullscreen v1.4.1?
+
+🚀 CONTINUOUS FULLSCREEN: Now using Native Window Mode (F11), your fullscreen persists across page loads, link clicks, and navigations. No more jumping in and out of immersion.
+
+⚡ AUTO-FULLSCREEN ON LOAD: The extension can now automatically enter fullscreen as soon as you open a page. Set it once and forget it—total immersion is now the default.
+
+🛡️ SCROLLBAR PROTECTION: Intelligently ignores the far-right edge of your screen. Scroll through long articles without accidentally triggering the fullscreen toggle.
+
+↖️ TOP-EDGE EXIT: Simply move your cursor to the top edge of the screen to exit fullscreen instantly. It's the fastest way to get your browser UI back.
+
+🚀 TURBO LONG PRESS: A split-second hold (default 0.2s) anywhere on the page toggles fullscreen. Snappy, responsive, and designed to never conflict with your workflow.
+
+🎨 CUSTOMIZABLE FX: Choose your own theme color and adjust the "Charge Time" (0.1s to 1s) to fit your speed.
+
+💎 PREMIUM GLASSMORPHIC UI: A beautiful settings panel that feels like a native part of your modern browser.
+
+Perfect for:
+🎬 Binge-watching videos without UI interruptions
+📖 Deep-reading long-form content
+🖼️ Browsing galleries and photography
+➕ Anyone who wants a cleaner, distraction-free web
+
+Maximize your screen. Minimize the clutter. Install Auto Fullscreen today.
