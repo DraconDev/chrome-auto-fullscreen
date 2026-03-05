@@ -109,14 +109,34 @@ function App() {
             onChange={() => updateState({ strictSafety: !state?.strictSafety })}
           />
 
-          <Toggle
-            label="Exit on top edge"
-            checked={!!state?.topEdgeExitEnabled}
-            onChange={() =>
-              updateState({ topEdgeExitEnabled: !state?.topEdgeExitEnabled })
-            }
-          />
-        </div>
+        <Toggle
+          label="Exit on top edge"
+          checked={!!state?.topEdgeExitEnabled}
+          onChange={() =>
+            updateState({ topEdgeExitEnabled: !state?.topEdgeExitEnabled })
+          }
+        />
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1">
+          Video Fullscreen
+        </h2>
+        <Toggle
+          label="Click video to fullscreen"
+          checked={!!state?.videoClickFullscreen}
+          onChange={() =>
+            updateState({ videoClickFullscreen: !state?.videoClickFullscreen })
+          }
+        />
+        <Toggle
+          label="Press 'f' to fullscreen video"
+          checked={!!state?.videoKeyFullscreen}
+          onChange={() =>
+            updateState({ videoKeyFullscreen: !state?.videoKeyFullscreen })
+          }
+        />
+      </div>
 
         {/* Visuals */}
         <div className="space-y-3">
