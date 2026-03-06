@@ -1,23 +1,50 @@
 import { store } from "@/utils/store";
 import { defineContentScript } from "wxt/sandbox";
 
-export default defineContentScript({
-  matches: ["<all_urls>"],
-  async main() {
-    let isEnabled = (await store.getValue()).enabled;
-    let rippleEnabled = (await store.getValue()).rippleEnabled;
-    let strictSafety = (await store.getValue()).strictSafety;
-    let longPressDelay = (await store.getValue()).longPressDelay;
-    let primaryColor = (await store.getValue()).primaryColor;
-    let topEdgeExitEnabled = (await store.getValue()).topEdgeExitEnabled;
-    let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
-    let videoClickFullscreen = (await store.getValue()).videoClickFullscreen;
-    let videoKeyFullscreen = (await store.getValue()).videoKeyFullscreen;
-    const TOP_EDGE_THRESHOLD = 1;
+const PENDING_FULLSCREEN_KEY = "af-pending-fullscreen";
 
-    if (isEnabled && autoFullscreenEnabled) {
-      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-    }
+export default defineContentScript({
+ matches: ["<all_urls>"],
+ async main() {
+ let isEnabled = (await store.getValue()).enabled;
+ let rippleEnabled = (await store.getValue()).rippleEnabled;
+ let strictSafety = (await store.getValue()).strictSafety;
+ let longPressDelay = (await store.getValue()).longPressDelay;
+ let primaryColor = (await store.getValue()).primaryColor;
+ let topEdgeExitEnabled = (await store.getValue()).topEdgeExitEnabled;
+ let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
+ let videoClickFullscreen = (await store.getValue()).videoClickFullscreen;
+ let videoKeyFullscreen = (await store.getValue()).videoKeyFullscreen;
+ const TOP_EDGE_THRESHOLD = 1;
+
+ const isVideoWatchPage = () => {
+ const path = window.location.pathname;
+ return path.includes("/watch") || path.includes("/shorts/");
+ };
+
+ const pendingFullscreen = sessionStorage.getItem(PENDING_FULLSCREEN_KEY);
+ if (pendingFullscreen === "true" && isVideoWatchPage()) {
+ sessionStorage.removeItem(PENDING_FULLSCREEN_KEY);
+ const checkAndFullscreen = () => {
+ const video = document.querySelector("video");
+ if (video && video.readyState >= 2) {
+ browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+ return true;
+ }
+ return false;
+ };
+ if (!checkAndFullscreen()) {
+ const observer = new MutationObserver(() => {
+ if (checkAndFullscreen()) {
+ observer.disconnect();
+ }
+ });
+ observer.observe(document.body, { childList: true, subtree: true });
+ setTimeout(() => observer.disconnect(), 5000);
+ }
+ } else if (isEnabled && autoFullscreenEnabled) {
+ browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+ }
 
     const updateStyles = () => {
       document.documentElement.style.setProperty("--af-color", primaryColor);
