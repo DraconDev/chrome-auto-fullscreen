@@ -239,8 +239,11 @@ export default defineContentScript({
         if (videoTarget) {
           const video = videoTarget as HTMLVideoElement;
 
-          // Only fullscreen if video is paused (not currently playing)
-          if (video.paused) {
+          // Only fullscreen if video has not started playing (paused and at beginning)
+          // This targets feed videos that haven't been interacted with yet
+          const hasNotStarted = video.paused && video.currentTime === 0;
+          
+          if (hasNotStarted) {
             toggleVideoFullscreen(video);
             e.preventDefault();
           }
