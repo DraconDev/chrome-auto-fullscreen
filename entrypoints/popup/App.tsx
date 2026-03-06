@@ -6,26 +6,25 @@ function App() {
   const [state, setState] = useState<Store | null>(null);
 
 useEffect(() => {
- let mounted = true;
- let unwatch: (() => void) | undefined;
+let mounted = true;
 
- (async () => {
- const currentState = await store.getValue();
- if (mounted) {
- setState(currentState);
- }
- })();
+store.getValue().then((currentState) => {
+if (mounted) {
+setState(currentState);
+}
+});
 
- store.watch((newValue) => {
- if (mounted && newValue) {
- setState(newValue);
- }
- });
+const unwatch = store.watch((newValue) => {
+if (mounted && newValue) {
+setState(newValue);
+}
+});
 
- return () => {
- mounted = false;
- };
- }, []);
+return () => {
+mounted = false;
+unwatch();
+};
+}, []);
 
   const updateState = async (updates: Partial<Store>) => {
     if (state) {
