@@ -156,6 +156,47 @@ export default defineContentScript({
       return videoPatterns.some(pattern => pattern.test(url));
     };
 
+    const enterVideoFullscreen = (video: HTMLVideoElement) => {
+      // Only enter fullscreen, don't toggle if already fullscreen
+      if (document.fullscreenElement) {
+        console.log("[Fullscreen] Already in fullscreen, skipping");
+        return;
+      }
+
+      const isYouTube = window.location.hostname.includes("youtube.com");
+      const isOdysee = window.location.hostname.includes("odysee.com");
+
+      console.log("[Fullscreen] Entering fullscreen for video");
+
+      if (isYouTube) {
+        const player = video.closest(".html5-video-player") as HTMLElement;
+        if (player) {
+          // Check if already in fullscreen mode via YouTube's class
+          if (player.classList.contains("ytp-fullscreen")) return;
+          const fsButton = player.querySelector(".ytp-fullscreen-button") as HTMLButtonElement;
+          if (fsButton) {
+            fsButton.click();
+            return;
+          }
+        }
+      }
+
+      if (isOdysee) {
+        const player = video.closest(".video-js") as HTMLElement;
+        if (player) {
+          // Check if already in fullscreen mode via Video.js class
+          if (player.classList.contains("vjs-fullscreen")) return;
+          const fsButton = player.querySelector(".vjs-fullscreen-control") as HTMLButtonElement;
+          if (fsButton) {
+            fsButton.click();
+            return;
+          }
+        }
+      }
+
+      video.requestFullscreen().catch(() => {});
+    };
+
     const toggleVideoFullscreen = (video: HTMLVideoElement) => {
       const isYouTube = window.location.hostname.includes("youtube.com");
       const isOdysee = window.location.hostname.includes("odysee.com");
@@ -243,7 +284,7 @@ export default defineContentScript({
         if (video.currentTime < 3 && !document.fullscreenElement) {
           console.log("[AutoFullscreen] New inactive video loaded, fullscreening...");
           hasAutoFullscreened = true;
-          toggleVideoFullscreen(video as HTMLVideoElement);
+          enterVideoFullscreen(video as HTMLVideoElement);
         }
       }, 100);
     };
