@@ -191,6 +191,7 @@ export default defineContentScript({
 
     // Auto-fullscreen when navigating to a video page via feed click
     let hasAutoFullscreened = false;
+    let autoFullscreenTimeout: ReturnType<typeof setTimeout> | null = null;
 
     // Check if video is "active" (being watched - has progress bar/user interaction)
     const isVideoActive = (video: HTMLVideoElement): boolean => {
@@ -222,21 +223,29 @@ export default defineContentScript({
     const autoFullscreenOnVideoLoad = () => {
       if (!videoClickFullscreen || hasAutoFullscreened) return;
 
-      const video = document.querySelector("video");
-      if (!video) return;
-
-      // Don't auto-fullscreen active (being watched) videos
-      if (isVideoActive(video)) {
-        console.log("[AutoFullscreen] Video is active (being watched), skipping...");
-        return;
+      // Clear any pending timeout
+      if (autoFullscreenTimeout) {
+        clearTimeout(autoFullscreenTimeout);
       }
 
-      // Only auto-fullscreen if video just started (within first 3 seconds)
-      if (video.currentTime < 3 && !document.fullscreenElement) {
-        console.log("[AutoFullscreen] New inactive video loaded, fullscreening...");
-        hasAutoFullscreened = true;
-        toggleVideoFullscreen(video as HTMLVideoElement);
-      }
+      // Delay slightly to let video state settle
+      autoFullscreenTimeout = setTimeout(() => {
+        const video = document.querySelector("video");
+        if (!video || hasAutoFullscreened) return;
+
+        // Don't auto-fullscreen active (being watched) videos
+        if (isVideoActive(video)) {
+          console.log("[AutoFullscreen] Video is active (being watched), skipping...");
+          return;
+        }
+
+        // Only auto-fullscreen if video just started (within first 3 seconds)
+        if (video.currentTime < 3 && !document.fullscreenElement) {
+          console.log("[AutoFullscreen] New inactive video loaded, fullscreening...");
+          hasAutoFullscreened = true;
+          toggleVideoFullscreen(video as HTMLVideoElement);
+        }
+      }, 100);
     };
 
     // Watch for video element and auto-fullscreen on load
@@ -245,7 +254,7 @@ export default defineContentScript({
       if (video && !video.dataset.afAutofullscreenWatched) {
         video.dataset.afAutofullscreenWatched = "true";
         video.addEventListener("loadeddata", autoFullscreenOnVideoLoad);
-        video.addEventListener("play", autoFullscreenOnVideoLoad);
+        video.addEventListener("play", autoFullscreenOnVideoLoad, { once: true });
       }
     });
 
@@ -256,7 +265,7 @@ export default defineContentScript({
     if (existingVideo && !existingVideo.dataset.afAutofullscreenWatched) {
       existingVideo.dataset.afAutofullscreenWatched = "true";
       existingVideo.addEventListener("loadeddata", autoFullscreenOnVideoLoad);
-      existingVideo.addEventListener("play", autoFullscreenOnVideoLoad);
+      existingVideo.addEventListener("play", autoFullscreenOnVideoLoad, { once: true });
       autoFullscreenOnVideoLoad();
     }
 
@@ -278,35 +287,31 @@ export default defineContentScript({
       }
     }, 200);
 
-     const handleKeyDown = (e: KeyboardEvent) => {
-       if (!isEnabled || !videoKeyFullscreen) return;
-       if (e.key.toLowerCase() !== "f") return;
-       if ((e.target as Element).closest("input, textarea, [contenteditable]")) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isEnabled || !videoKeyFullscreen) return;
+      if (e.key.toLowerCase() !== "f") return;
+      if ((e.target as Element).closest("input, textarea, [contenteditable]")) return;
 
-       const videos = document.querySelectorAll("video");
-       let targetVideo: HTMLVideoElement | null = null;
-       let maxArea = 0;
+      const videos = document.querySelectorAll("video");
+      let targetVideo: HTMLVideoElement | null = null;
+      let maxArea = 0;
 
-       for (const video of videos) {
-         // Skip playing videos - only fullscreen paused videos
-         if (!video.paused) {
-           continue;
-         }
+      for (const video of videos) {
+        const rect = video.getBoundingClientRect();
+        const area = rect.width * rect.height;
+        if (area > maxArea && area > 0) {
+          maxArea = area;
+          targetVideo = video as HTMLVideoElement;
+        }
+      }
 
-         const rect = video.getBoundingClientRect();
-         const area = rect.width * rect.height;
-         if (area > maxArea && area > 0) {
-           maxArea = area;
-           targetVideo = video as HTMLVideoElement;
-         }
-       }
-
-       if (targetVideo) {
-         e.preventDefault();
-         e.stopPropagation();
-         toggleVideoFullscreen(targetVideo);
-       }
-     };
+      if (targetVideo) {
+        console.log("[KeyF] Toggling fullscreen on largest video");
+        e.preventDefault();
+        e.stopPropagation();
+        toggleVideoFullscreen(targetVideo);
+      }
+    };
 
     const handleMouseDown = (e: MouseEvent) => {
       if (longPressTimer) clearTimeout(longPressTimer);
