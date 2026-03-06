@@ -378,6 +378,9 @@ export default defineContentScript({
 
           // Only fullscreen if paused - don't touch playing videos
           if (video.paused) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
             enterVideoFullscreen(video);
           }
           return;
@@ -463,7 +466,7 @@ export default defineContentScript({
       }
     });
 
-    document.addEventListener("mousedown", handleMouseDown, { passive: false });
+    document.addEventListener("mousedown", handleMouseDown, { passive: false, capture: true });
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
     document.addEventListener("mouseup", handleMouseUp, { passive: true });
     document.addEventListener("dragstart", handleMouseUp, { passive: true });
