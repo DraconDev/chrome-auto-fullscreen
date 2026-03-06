@@ -129,6 +129,22 @@ export default defineContentScript({
       return videoPatterns.some(pattern => pattern.test(url));
     };
 
+    // Check if video is inside main player container
+    const isVideoInMainPlayer = (video: HTMLVideoElement): boolean => {
+      const isYouTube = window.location.hostname.includes("youtube.com");
+      const isOdysee = window.location.hostname.includes("odysee.com");
+
+      if (isYouTube) {
+        return video.closest(".html5-video-player, #movie_player") !== null;
+      }
+
+      if (isOdysee) {
+        return video.closest(".video-js") !== null;
+      }
+
+      return false;
+    };
+
     const toggleVideoFullscreen = (video: HTMLVideoElement) => {
       const isYouTube = window.location.hostname.includes("youtube.com");
       const isOdysee = window.location.hostname.includes("odysee.com");
@@ -162,30 +178,35 @@ export default defineContentScript({
       }
     };
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isEnabled || !videoKeyFullscreen) return;
-      if (e.key.toLowerCase() !== "f") return;
-      if ((e.target as Element).closest("input, textarea, [contenteditable]")) return;
+     const handleKeyDown = (e: KeyboardEvent) => {
+       if (!isEnabled || !videoKeyFullscreen) return;
+       if (e.key.toLowerCase() !== "f") return;
+       if ((e.target as Element).closest("input, textarea, [contenteditable]")) return;
 
-      const videos = document.querySelectorAll("video");
-      let targetVideo: HTMLVideoElement | null = null;
-      let maxArea = 0;
+       const videos = document.querySelectorAll("video");
+       let targetVideo: HTMLVideoElement | null = null;
+       let maxArea = 0;
 
-      for (const video of videos) {
-        const rect = video.getBoundingClientRect();
-        const area = rect.width * rect.height;
-        if (area > maxArea && area > 0) {
-          maxArea = area;
-          targetVideo = video as HTMLVideoElement;
-        }
-      }
+       for (const video of videos) {
+         // Skip main player videos
+         if (isVideoInMainPlayer(video)) {
+           continue;
+         }
 
-      if (targetVideo) {
-        e.preventDefault();
-        e.stopPropagation();
-        toggleVideoFullscreen(targetVideo);
-      }
-    };
+         const rect = video.getBoundingClientRect();
+         const area = rect.width * rect.height;
+         if (area > maxArea && area > 0) {
+           maxArea = area;
+           targetVideo = video as HTMLVideoElement;
+         }
+       }
+
+       if (targetVideo) {
+         e.preventDefault();
+         e.stopPropagation();
+         toggleVideoFullscreen(targetVideo);
+       }
+     };
 
     const handleMouseDown = (e: MouseEvent) => {
       if (longPressTimer) clearTimeout(longPressTimer);
@@ -206,6 +227,13 @@ export default defineContentScript({
         const videoTarget = target.closest("video");
         if (videoTarget) {
           const video = videoTarget as HTMLVideoElement;
+
+          // Skip main player videos - they should retain pause/play behavior
+          if (isVideoInMainPlayer(video)) {
+            return;
+          }
+
+          // This is a feed video (like a Short) - fullscreen it
           toggleVideoFullscreen(video);
           e.preventDefault();
           return;
