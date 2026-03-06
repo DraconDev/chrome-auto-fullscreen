@@ -378,8 +378,7 @@ export default defineContentScript({
 
           // Only fullscreen if paused - don't touch playing videos
           if (video.paused) {
-            toggleVideoFullscreen(video);
-            e.preventDefault();
+            enterVideoFullscreen(video);
           }
           return;
         }
