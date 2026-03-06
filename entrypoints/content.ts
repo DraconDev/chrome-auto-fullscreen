@@ -156,22 +156,6 @@ export default defineContentScript({
       return videoPatterns.some(pattern => pattern.test(url));
     };
 
-    // Check if video is inside main player container
-    const isVideoInMainPlayer = (video: HTMLVideoElement): boolean => {
-      const isYouTube = window.location.hostname.includes("youtube.com");
-      const isOdysee = window.location.hostname.includes("odysee.com");
-
-      if (isYouTube) {
-        return video.closest(".html5-video-player, #movie_player") !== null;
-      }
-
-      if (isOdysee) {
-        return video.closest(".video-js") !== null;
-      }
-
-      return false;
-    };
-
     const toggleVideoFullscreen = (video: HTMLVideoElement) => {
       const isYouTube = window.location.hostname.includes("youtube.com");
       const isOdysee = window.location.hostname.includes("odysee.com");
@@ -215,8 +199,8 @@ export default defineContentScript({
        let maxArea = 0;
 
        for (const video of videos) {
-         // Skip main player videos
-         if (isVideoInMainPlayer(video)) {
+         // Skip playing videos - only fullscreen paused videos
+         if (!video.paused) {
            continue;
          }
 
@@ -255,14 +239,11 @@ export default defineContentScript({
         if (videoTarget) {
           const video = videoTarget as HTMLVideoElement;
 
-          // Skip main player videos - they should retain pause/play behavior
-          if (isVideoInMainPlayer(video)) {
-            return;
+          // Only fullscreen if video is paused (not currently playing)
+          if (video.paused) {
+            toggleVideoFullscreen(video);
+            e.preventDefault();
           }
-
-          // This is a feed video (like a Short) - fullscreen it
-          toggleVideoFullscreen(video);
-          e.preventDefault();
           return;
         }
 
