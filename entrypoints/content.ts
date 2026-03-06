@@ -238,12 +238,11 @@ export default defineContentScript({
         const videoTarget = target.closest("video");
         if (videoTarget) {
           const video = videoTarget as HTMLVideoElement;
-          const isPlaying = !video.paused && video.currentTime > 0 && !video.ended;
           
-          console.log("[VideoClick] paused:", video.paused, "currentTime:", video.currentTime, "isPlaying:", isPlaying);
+          console.log("[VideoClick] paused:", video.paused, "currentTime:", video.currentTime);
           
-          // Only fullscreen if NOT actively playing
-          if (!isPlaying) {
+          // Only fullscreen if paused - don't touch playing videos
+          if (video.paused) {
             toggleVideoFullscreen(video);
             e.preventDefault();
           }
