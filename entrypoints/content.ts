@@ -191,15 +191,49 @@ export default defineContentScript({
 
     // Auto-fullscreen when navigating to a video page via feed click
     let hasAutoFullscreened = false;
+
+    // Check if video is "active" (being watched - has progress bar/user interaction)
+    const isVideoActive = (video: HTMLVideoElement): boolean => {
+      // On Odysee, check if user has interacted with the video player
+      // Active videos have a progress bar that's been interacted with
+      const isOdysee = window.location.hostname.includes("odysee.com");
+      const isYouTube = window.location.hostname.includes("youtube.com");
+
+      if (isOdysee) {
+        // Check if video has been played before (has progress)
+        const player = video.closest(".video-js");
+        if (player) {
+          // If video has played for more than 5 seconds, consider it active
+          if (video.currentTime > 5) return true;
+          // If video has been paused and resumed (ended event fired before), it's active
+          if (video.played.length > 0 && video.played.end(0) > 5) return true;
+        }
+      }
+
+      if (isYouTube) {
+        // YouTube: if video is past initial buffer, user is watching
+        if (video.currentTime > 5) return true;
+        if (video.played.length > 0 && video.played.end(0) > 5) return true;
+      }
+
+      return false;
+    };
+
     const autoFullscreenOnVideoLoad = () => {
       if (!videoClickFullscreen || hasAutoFullscreened) return;
 
       const video = document.querySelector("video");
       if (!video) return;
 
+      // Don't auto-fullscreen active (being watched) videos
+      if (isVideoActive(video)) {
+        console.log("[AutoFullscreen] Video is active (being watched), skipping...");
+        return;
+      }
+
       // Only auto-fullscreen if video just started (within first 3 seconds)
       if (video.currentTime < 3 && !document.fullscreenElement) {
-        console.log("[AutoFullscreen] New video loaded, fullscreening...");
+        console.log("[AutoFullscreen] New inactive video loaded, fullscreening...");
         hasAutoFullscreened = true;
         toggleVideoFullscreen(video as HTMLVideoElement);
       }
