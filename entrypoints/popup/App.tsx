@@ -5,19 +5,27 @@ import { useEffect, useState } from "react";
 function App() {
   const [state, setState] = useState<Store | null>(null);
 
-  useEffect(() => {
-    if (!state) {
-      (async () => {
-        const currentState = await store.getValue();
-        setState(currentState);
-      })();
-    }
-    store.watch((newValue) => {
-      if (newValue) {
-        setState(newValue);
-      }
-    });
-  }, []);
+useEffect(() => {
+ let mounted = true;
+ let unwatch: (() => void) | undefined;
+
+ (async () => {
+ const currentState = await store.getValue();
+ if (mounted) {
+ setState(currentState);
+ }
+ })();
+
+ store.watch((newValue) => {
+ if (mounted && newValue) {
+ setState(newValue);
+ }
+ });
+
+ return () => {
+ mounted = false;
+ };
+ }, []);
 
   const updateState = async (updates: Partial<Store>) => {
     if (state) {
