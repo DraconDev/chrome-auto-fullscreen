@@ -327,9 +327,9 @@ export default defineContentScript({
         const videoTarget = target.closest("video");
         if (videoTarget) {
           const video = videoTarget as HTMLVideoElement;
-          
-          console.log("[VideoClick] paused:", video.paused, "currentTime:", video.currentTime);
-          
+
+          console.log("[VideoClick] tagName:", target.tagName, "paused:", video.paused, "currentTime:", video.currentTime, "duration:", video.duration);
+
           // Only fullscreen if paused - don't touch playing videos
           if (video.paused) {
             toggleVideoFullscreen(video);
@@ -341,6 +341,7 @@ export default defineContentScript({
         const link = target.closest("a");
         if (link) {
           const href = link.getAttribute("href");
+          console.log("[VideoClick] Clicked link:", href);
           if (href && isVideoUrl(href)) {
             return;
           }
