@@ -157,6 +157,9 @@ export default defineContentScript({
     };
 
     const enterVideoFullscreen = (video: HTMLVideoElement) => {
+      console.log("[EnterFullscreen] called - fullscreenElement:", !!document.fullscreenElement);
+      console.trace("[EnterFullscreen] stack trace");
+      
       // Only enter fullscreen, don't toggle if already fullscreen
       if (document.fullscreenElement) {
         console.log("[Fullscreen] Already in fullscreen, skipping");
@@ -188,6 +191,7 @@ export default defineContentScript({
           if (player.classList.contains("vjs-fullscreen")) return;
           const fsButton = player.querySelector(".vjs-fullscreen-control") as HTMLButtonElement;
           if (fsButton) {
+            console.log("[Fullscreen] Clicking vjs-fullscreen-control button");
             fsButton.click();
             return;
           }
