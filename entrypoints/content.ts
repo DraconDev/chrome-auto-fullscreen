@@ -156,42 +156,7 @@ export default defineContentScript({
       return videoPatterns.some(pattern => pattern.test(url));
     };
 
-    const handleVideoAutoFullscreen = () => {
-    if (!videoClickFullscreen) return;
-
-    const video = document.querySelector("video");
-    if (!video) return;
-
-    // Check if we just navigated to this video (within first 2 seconds)
-    const isRecentlyLoaded = video.currentTime < 2;
-
-    if (isRecentlyLoaded && !document.fullscreenElement) {
-      console.log("[AutoFullscreen] Video recently loaded, fullscreening...");
-      toggleVideoFullscreen(video as HTMLVideoElement);
-    }
-  };
-
-  // Watch for video element to appear
-  const videoObserver = new MutationObserver(() => {
-    const video = document.querySelector("video");
-    if (video && !video.dataset.afWatched) {
-      video.dataset.afWatched = "true";
-      video.addEventListener("loadeddata", () => {
-        if (videoClickFullscreen) {
-          handleVideoAutoFullscreen();
-        }
-      });
-    }
-  });
-
-  videoObserver.observe(document.body, { childList: true, subtree: true });
-
-  // Also check existing video on page
-  const existingVideo = document.querySelector("video");
-  if (existingVideo) {
-    existingVideo.dataset.afWatched = "true";
-    existingVideo.addEventListener("loadeddata", handleVideoAutoFullscreen);
-  }
+    const toggleVideoFullscreen = (video: HTMLVideoElement) => {
       const isYouTube = window.location.hostname.includes("youtube.com");
       const isOdysee = window.location.hostname.includes("odysee.com");
 
