@@ -189,6 +189,61 @@ export default defineContentScript({
       }
     };
 
+    // Auto-fullscreen when navigating to a video page via feed click
+    let hasAutoFullscreened = false;
+    const autoFullscreenOnVideoLoad = () => {
+      if (!videoClickFullscreen || hasAutoFullscreened) return;
+
+      const video = document.querySelector("video");
+      if (!video) return;
+
+      // Only auto-fullscreen if video just started (within first 3 seconds)
+      if (video.currentTime < 3 && !document.fullscreenElement) {
+        console.log("[AutoFullscreen] New video loaded, fullscreening...");
+        hasAutoFullscreened = true;
+        toggleVideoFullscreen(video as HTMLVideoElement);
+      }
+    };
+
+    // Watch for video element and auto-fullscreen on load
+    const videoMutationObserver = new MutationObserver(() => {
+      const video = document.querySelector("video");
+      if (video && !video.dataset.afAutofullscreenWatched) {
+        video.dataset.afAutofullscreenWatched = "true";
+        video.addEventListener("loadeddata", autoFullscreenOnVideoLoad);
+        video.addEventListener("play", autoFullscreenOnVideoLoad);
+      }
+    });
+
+    videoMutationObserver.observe(document.body, { childList: true, subtree: true });
+
+    // Check existing video
+    const existingVideo = document.querySelector("video");
+    if (existingVideo && !existingVideo.dataset.afAutofullscreenWatched) {
+      existingVideo.dataset.afAutofullscreenWatched = "true";
+      existingVideo.addEventListener("loadeddata", autoFullscreenOnVideoLoad);
+      existingVideo.addEventListener("play", autoFullscreenOnVideoLoad);
+      autoFullscreenOnVideoLoad();
+    }
+
+    // Reset auto-fullscreen flag on navigation
+    let lastUrl = window.location.href;
+    setInterval(() => {
+      if (window.location.href !== lastUrl) {
+        lastUrl = window.location.href;
+        hasAutoFullscreened = false;
+        // Re-check for video on new page
+        setTimeout(() => {
+          const video = document.querySelector("video");
+          if (video && !video.dataset.afAutofullscreenWatched) {
+            video.dataset.afAutofullscreenWatched = "true";
+            video.addEventListener("loadeddata", autoFullscreenOnVideoLoad);
+            video.addEventListener("play", autoFullscreenOnVideoLoad);
+          }
+        }, 500);
+      }
+    }, 200);
+
      const handleKeyDown = (e: KeyboardEvent) => {
        if (!isEnabled || !videoKeyFullscreen) return;
        if (e.key.toLowerCase() !== "f") return;
