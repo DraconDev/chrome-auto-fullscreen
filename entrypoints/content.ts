@@ -156,6 +156,9 @@ export default defineContentScript({
       return videoPatterns.some(pattern => pattern.test(url));
     };
 
+    // Global fullscreen cooldown
+    let fullscreenCooldown = false;
+
     const enterVideoFullscreen = (video: HTMLVideoElement) => {
       // Only enter fullscreen, don't toggle if already fullscreen
       if (document.fullscreenElement) {
@@ -164,7 +167,7 @@ export default defineContentScript({
       }
 
       // Check cooldown to prevent double-toggle
-      if ((video as any)._afFullscreenCooldown) {
+      if (fullscreenCooldown) {
         console.log("[Fullscreen] Cooldown active, skipping");
         return;
       }
@@ -175,10 +178,10 @@ export default defineContentScript({
       console.log("[Fullscreen] Entering fullscreen for video");
 
       // Set cooldown
-      (video as any)._afFullscreenCooldown = true;
+      fullscreenCooldown = true;
       setTimeout(() => {
-        (video as any)._afFullscreenCooldown = false;
-      }, 2000);
+        fullscreenCooldown = false;
+      }, 3000);
 
       if (isYouTube) {
         const player = video.closest(".html5-video-player") as HTMLElement;
@@ -194,20 +197,12 @@ export default defineContentScript({
       }
 
       if (isOdysee) {
-        const player = video.closest(".video-js") as HTMLElement;
-        if (player) {
-          // Check if already in fullscreen mode via Video.js class
-          if (player.classList.contains("vjs-fullscreen")) {
-            console.log("[Fullscreen] Player already has vjs-fullscreen class");
-            return;
-          }
-          const fsButton = player.querySelector(".vjs-fullscreen-control") as HTMLButtonElement;
-          if (fsButton) {
-            console.log("[Fullscreen] Clicking vjs-fullscreen-control button");
-            fsButton.click();
-            return;
-          }
-        }
+        // Use native fullscreen instead of clicking Odysee's toggle button
+        // to avoid conflict with Odysee's own handlers
+        video.requestFullscreen().catch((err) => {
+          console.log("[Fullscreen] Native fullscreen failed:", err);
+        });
+        return;
       }
 
       video.requestFullscreen().catch(() => {});
