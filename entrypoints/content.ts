@@ -159,10 +159,6 @@ export default defineContentScript({
     // Global fullscreen cooldown and guard
     let fullscreenCooldown = false;
     let fullscreenGuard = false;
-
-    // Global fullscreen cooldown and guard
-    let fullscreenCooldown = false;
-    let fullscreenGuard = false;
     let pendingFullscreenElement: HTMLElement | null = null;
 
     // Re-enter fullscreen if exited during guard period
@@ -205,15 +201,15 @@ export default defineContentScript({
       // Set cooldown and guard
       fullscreenCooldown = true;
       fullscreenGuard = true;
-      
-      // Keep guard active for 2 seconds to prevent Odysee from exiting
+
+      // Keep guard active for 3 seconds to prevent Odysee from exiting
       setTimeout(() => {
         fullscreenGuard = false;
-      }, 2000);
-      
+      }, 3000);
+
       setTimeout(() => {
         fullscreenCooldown = false;
-      }, 3000);
+      }, 5000);
 
       if (isYouTube) {
         const player = video.closest(".html5-video-player") as HTMLElement;
@@ -233,16 +229,20 @@ export default defineContentScript({
         const player = video.closest(".video-js") as HTMLElement;
         if (player) {
           console.log("[Fullscreen] Requesting fullscreen on .video-js container");
+          pendingFullscreenElement = player;
           player.requestFullscreen().catch((err) => {
             console.log("[Fullscreen] Player fullscreen failed, trying video:", err);
+            pendingFullscreenElement = video;
             video.requestFullscreen().catch(() => {});
           });
         } else {
+          pendingFullscreenElement = video;
           video.requestFullscreen().catch(() => {});
         }
         return;
       }
 
+      pendingFullscreenElement = video;
       video.requestFullscreen().catch(() => {});
     };
 
