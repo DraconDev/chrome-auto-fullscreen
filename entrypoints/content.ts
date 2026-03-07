@@ -197,7 +197,10 @@ export default defineContentScript({
         const player = video.closest(".video-js") as HTMLElement;
         if (player) {
           // Check if already in fullscreen mode via Video.js class
-          if (player.classList.contains("vjs-fullscreen")) return;
+          if (player.classList.contains("vjs-fullscreen")) {
+            console.log("[Fullscreen] Player already has vjs-fullscreen class");
+            return;
+          }
           const fsButton = player.querySelector(".vjs-fullscreen-control") as HTMLButtonElement;
           if (fsButton) {
             console.log("[Fullscreen] Clicking vjs-fullscreen-control button");
