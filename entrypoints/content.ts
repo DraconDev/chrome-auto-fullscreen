@@ -1,50 +1,21 @@
 import { store } from "@/utils/store";
 import { defineContentScript } from "wxt/sandbox";
 
-const PENDING_FULLSCREEN_KEY = "af-pending-fullscreen";
-
 export default defineContentScript({
- matches: ["<all_urls>"],
- async main() {
- let isEnabled = (await store.getValue()).enabled;
- let rippleEnabled = (await store.getValue()).rippleEnabled;
- let strictSafety = (await store.getValue()).strictSafety;
- let longPressDelay = (await store.getValue()).longPressDelay;
- let primaryColor = (await store.getValue()).primaryColor;
- let topEdgeExitEnabled = (await store.getValue()).topEdgeExitEnabled;
- let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
- let videoClickFullscreen = (await store.getValue()).videoClickFullscreen;
- let videoKeyFullscreen = (await store.getValue()).videoKeyFullscreen;
- const TOP_EDGE_THRESHOLD = 1;
+  matches: ["<all_urls>"],
+  async main() {
+    let isEnabled = (await store.getValue()).enabled;
+    let rippleEnabled = (await store.getValue()).rippleEnabled;
+    let strictSafety = (await store.getValue()).strictSafety;
+    let longPressDelay = (await store.getValue()).longPressDelay;
+    let primaryColor = (await store.getValue()).primaryColor;
+    let topEdgeExitEnabled = (await store.getValue()).topEdgeExitEnabled;
+    let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
+    const TOP_EDGE_THRESHOLD = 1;
 
- const isVideoWatchPage = () => {
- const path = window.location.pathname;
- return path.includes("/watch") || path.includes("/shorts/");
- };
-
- const pendingFullscreen = sessionStorage.getItem(PENDING_FULLSCREEN_KEY);
- if (pendingFullscreen === "true" && isVideoWatchPage()) {
- sessionStorage.removeItem(PENDING_FULLSCREEN_KEY);
- const checkAndFullscreen = () => {
- const video = document.querySelector("video");
- if (video && video.readyState >= 2) {
- browser.runtime.sendMessage({ action: "setWindowFullscreen" });
- return true;
- }
- return false;
- };
- if (!checkAndFullscreen()) {
- const observer = new MutationObserver(() => {
- if (checkAndFullscreen()) {
- observer.disconnect();
- }
- });
- observer.observe(document.body, { childList: true, subtree: true });
- setTimeout(() => observer.disconnect(), 5000);
- }
- } else if (isEnabled && autoFullscreenEnabled) {
- browser.runtime.sendMessage({ action: "setWindowFullscreen" });
- }
+    if (isEnabled && autoFullscreenEnabled) {
+      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+    }
 
     const updateStyles = () => {
       document.documentElement.style.setProperty("--af-color", primaryColor);
@@ -145,269 +116,6 @@ export default defineContentScript({
       browser.runtime.sendMessage({ action: "toggleWindowFullscreen" });
     };
 
-    const isVideoUrl = (url: string): boolean => {
-      const videoPatterns = [
-        /youtube\.com\/watch/i,
-        /youtube\.com\/shorts/i,
-        /youtu\.be\//i,
-        /odysee\.com\/@/i,
-        /odysee\.com\/\$\/video/i,
-      ];
-      return videoPatterns.some(pattern => pattern.test(url));
-    };
-
-    // Global fullscreen cooldown and guard
-    let fullscreenCooldown = false;
-    let fullscreenGuard = false;
-    let pendingFullscreenElement: HTMLElement | null = null;
-
-    // Re-enter fullscreen if exited during guard period
-    document.addEventListener("fullscreenchange", () => {
-      console.log("[FullscreenChange] fullscreenElement:", document.fullscreenElement, "guard:", fullscreenGuard, "pendingElement:", !!pendingFullscreenElement);
-
-      if (!document.fullscreenElement && fullscreenGuard && pendingFullscreenElement) {
-        console.log("[Fullscreen] Re-entering fullscreen after unexpected exit");
-        const elementToEnter = pendingFullscreenElement;
-        setTimeout(() => {
-          if (fullscreenGuard && elementToEnter) {
-            elementToEnter.requestFullscreen().catch(() => {});
-          }
-        }, 50);
-      } else if (!document.fullscreenElement && fullscreenGuard && !pendingFullscreenElement) {
-        console.log("[Fullscreen] Guard active but no pending element - this is the bug!");
-      }
-
-      if (document.fullscreenElement) {
-        // Clear pending element after 500ms to allow re-entry detection
-        setTimeout(() => {
-          pendingFullscreenElement = null;
-        }, 500);
-      }
-    });
-
-    const enterVideoFullscreen = (video: HTMLVideoElement) => {
-      // Only enter fullscreen, don't toggle if already fullscreen
-      if (document.fullscreenElement) {
-        console.log("[Fullscreen] Already in fullscreen, skipping");
-        return;
-      }
-
-      // Check cooldown to prevent double-toggle
-      if (fullscreenCooldown) {
-        console.log("[Fullscreen] Cooldown active, skipping");
-        return;
-      }
-
-      const isYouTube = window.location.hostname.includes("youtube.com");
-      const isOdysee = window.location.hostname.includes("odysee.com");
-
-      console.log("[Fullscreen] Entering fullscreen for video");
-
-      // Set cooldown and guard
-      fullscreenCooldown = true;
-      fullscreenGuard = true;
-
-      // Keep guard active for 3 seconds to prevent Odysee from exiting
-      setTimeout(() => {
-        fullscreenGuard = false;
-      }, 3000);
-
-      setTimeout(() => {
-        fullscreenCooldown = false;
-      }, 5000);
-
-      if (isYouTube) {
-        const player = video.closest(".html5-video-player") as HTMLElement;
-        if (player) {
-          // Check if already in fullscreen mode via YouTube's class
-          if (player.classList.contains("ytp-fullscreen")) return;
-          const fsButton = player.querySelector(".ytp-fullscreen-button") as HTMLButtonElement;
-          if (fsButton) {
-            fsButton.click();
-            return;
-          }
-        }
-      }
-
-      if (isOdysee) {
-        // Request fullscreen on the player container, not the video element
-        const player = video.closest(".video-js") as HTMLElement;
-        if (player) {
-          console.log("[Fullscreen] Requesting fullscreen on .video-js container");
-          pendingFullscreenElement = player;
-          player.requestFullscreen().catch((err) => {
-            console.log("[Fullscreen] Player fullscreen failed, trying video:", err);
-            pendingFullscreenElement = video;
-            video.requestFullscreen().catch(() => {});
-          });
-        } else {
-          pendingFullscreenElement = video;
-          video.requestFullscreen().catch(() => {});
-        }
-        return;
-      }
-
-      pendingFullscreenElement = video;
-      video.requestFullscreen().catch(() => {});
-    };
-
-    const toggleVideoFullscreen = (video: HTMLVideoElement) => {
-      const isYouTube = window.location.hostname.includes("youtube.com");
-      const isOdysee = window.location.hostname.includes("odysee.com");
-
-      if (isYouTube) {
-        const player = video.closest(".html5-video-player") as HTMLElement;
-        if (player) {
-          const fsButton = player.querySelector(".ytp-fullscreen-button") as HTMLButtonElement;
-          if (fsButton) {
-            fsButton.click();
-            return;
-          }
-        }
-      }
-
-      if (isOdysee) {
-        const player = video.closest(".video-js") as HTMLElement;
-        if (player) {
-          const fsButton = player.querySelector(".vjs-fullscreen-control") as HTMLButtonElement;
-          if (fsButton) {
-            fsButton.click();
-            return;
-          }
-        }
-      }
-
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        video.requestFullscreen();
-      }
-    };
-
-    // Auto-fullscreen when navigating to a video page via feed click
-    let hasAutoFullscreened = false;
-    let autoFullscreenTimeout: ReturnType<typeof setTimeout> | null = null;
-
-    // Check if video is "active" (being watched - has progress bar/user interaction)
-    const isVideoActive = (video: HTMLVideoElement): boolean => {
-      // On Odysee, check if user has interacted with the video player
-      // Active videos have a progress bar that's been interacted with
-      const isOdysee = window.location.hostname.includes("odysee.com");
-      const isYouTube = window.location.hostname.includes("youtube.com");
-
-      if (isOdysee) {
-        // Check if video has been played before (has progress)
-        const player = video.closest(".video-js");
-        if (player) {
-          // If video has played for more than 5 seconds, consider it active
-          if (video.currentTime > 5) return true;
-          // If video has been paused and resumed (ended event fired before), it's active
-          if (video.played.length > 0 && video.played.end(0) > 5) return true;
-        }
-      }
-
-      if (isYouTube) {
-        // YouTube: if video is past initial buffer, user is watching
-        if (video.currentTime > 5) return true;
-        if (video.played.length > 0 && video.played.end(0) > 5) return true;
-      }
-
-      return false;
-    };
-
-    const autoFullscreenOnVideoLoad = () => {
-      if (!videoClickFullscreen || hasAutoFullscreened) return;
-
-      // Clear any pending timeout
-      if (autoFullscreenTimeout) {
-        clearTimeout(autoFullscreenTimeout);
-      }
-
-      // Delay slightly to let video state settle
-      autoFullscreenTimeout = setTimeout(() => {
-        const video = document.querySelector("video");
-        if (!video || hasAutoFullscreened) return;
-
-        // Don't auto-fullscreen active (being watched) videos
-        if (isVideoActive(video)) {
-          console.log("[AutoFullscreen] Video is active (being watched), skipping...");
-          return;
-        }
-
-        // Only auto-fullscreen if video just started (within first 3 seconds)
-        if (video.currentTime < 3 && !document.fullscreenElement) {
-          console.log("[AutoFullscreen] New inactive video loaded, fullscreening...");
-          hasAutoFullscreened = true;
-          enterVideoFullscreen(video as HTMLVideoElement);
-        }
-      }, 100);
-    };
-
-    // Watch for video element and auto-fullscreen on load
-    const videoMutationObserver = new MutationObserver(() => {
-      const video = document.querySelector("video");
-      if (video && !video.dataset.afAutofullscreenWatched) {
-        video.dataset.afAutofullscreenWatched = "true";
-        video.addEventListener("loadeddata", autoFullscreenOnVideoLoad);
-        video.addEventListener("play", autoFullscreenOnVideoLoad, { once: true });
-      }
-    });
-
-    videoMutationObserver.observe(document.body, { childList: true, subtree: true });
-
-    // Check existing video
-    const existingVideo = document.querySelector("video");
-    if (existingVideo && !existingVideo.dataset.afAutofullscreenWatched) {
-      existingVideo.dataset.afAutofullscreenWatched = "true";
-      existingVideo.addEventListener("loadeddata", autoFullscreenOnVideoLoad);
-      existingVideo.addEventListener("play", autoFullscreenOnVideoLoad, { once: true });
-      autoFullscreenOnVideoLoad();
-    }
-
-    // Reset auto-fullscreen flag on navigation
-    let lastUrl = window.location.href;
-    setInterval(() => {
-      if (window.location.href !== lastUrl) {
-        lastUrl = window.location.href;
-        hasAutoFullscreened = false;
-        // Re-check for video on new page
-        setTimeout(() => {
-          const video = document.querySelector("video");
-          if (video && !video.dataset.afAutofullscreenWatched) {
-            video.dataset.afAutofullscreenWatched = "true";
-            video.addEventListener("loadeddata", autoFullscreenOnVideoLoad);
-            video.addEventListener("play", autoFullscreenOnVideoLoad);
-          }
-        }, 500);
-      }
-    }, 200);
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isEnabled || !videoKeyFullscreen) return;
-      if (e.key.toLowerCase() !== "f") return;
-      if ((e.target as Element).closest("input, textarea, [contenteditable]")) return;
-
-      const videos = document.querySelectorAll("video");
-      let targetVideo: HTMLVideoElement | null = null;
-      let maxArea = 0;
-
-      for (const video of videos) {
-        const rect = video.getBoundingClientRect();
-        const area = rect.width * rect.height;
-        if (area > maxArea && area > 0) {
-          maxArea = area;
-          targetVideo = video as HTMLVideoElement;
-        }
-      }
-
-      if (targetVideo) {
-        console.log("[KeyF] Toggling fullscreen on largest video");
-        e.preventDefault();
-        e.stopPropagation();
-        toggleVideoFullscreen(targetVideo);
-      }
-    };
-
     const handleMouseDown = (e: MouseEvent) => {
       if (longPressTimer) clearTimeout(longPressTimer);
 
@@ -422,22 +130,6 @@ export default defineContentScript({
       if (selection && selection.toString().length > 0) return;
 
       const target = e.target as Element;
-
-      if (videoClickFullscreen) {
-        const videoTarget = target.closest("video");
-        if (videoTarget) {
-          // Don't interfere with video clicks - auto-fullscreen handles this
-          return;
-        }
-
-        const link = target.closest("a");
-        if (link) {
-          const href = link.getAttribute("href");
-          if (href && isVideoUrl(href)) {
-            return;
-          }
-        }
-      }
 
       if (strictSafety) {
         if (target) {
@@ -501,20 +193,17 @@ export default defineContentScript({
       primaryColor = newValue.primaryColor;
       topEdgeExitEnabled = newValue.topEdgeExitEnabled;
       autoFullscreenEnabled = newValue.autoFullscreenEnabled;
-      videoClickFullscreen = newValue.videoClickFullscreen;
-      videoKeyFullscreen = newValue.videoKeyFullscreen;
       updateStyles();
       if (!isEnabled) {
         browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
       }
     });
 
-    document.addEventListener("mousedown", handleMouseDown, { passive: false, capture: true });
+    document.addEventListener("mousedown", handleMouseDown, { passive: false });
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
     document.addEventListener("mouseup", handleMouseUp, { passive: true });
     document.addEventListener("dragstart", handleMouseUp, { passive: true });
     document.addEventListener("wheel", handleMouseUp, { passive: true });
-    document.addEventListener("keydown", handleKeyDown, { passive: false, capture: true });
     window.addEventListener("scroll", handleMouseUp, { passive: true });
   },
 });
