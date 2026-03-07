@@ -160,19 +160,28 @@ export default defineContentScript({
     let fullscreenCooldown = false;
     let fullscreenGuard = false;
 
-    // Block exit fullscreen during guard
-    const originalExitFullscreen = document.exitFullscreen.bind(document);
-    document.exitFullscreen = function() {
-      if (fullscreenGuard) {
-        console.log("[Fullscreen] Blocked exitFullscreen during guard");
-        return Promise.resolve();
-      }
-      return originalExitFullscreen();
-    } as typeof document.exitFullscreen;
+    // Global fullscreen cooldown and guard
+    let fullscreenCooldown = false;
+    let fullscreenGuard = false;
+    let pendingFullscreenElement: HTMLElement | null = null;
 
-    // Debug: log fullscreen changes
+    // Re-enter fullscreen if exited during guard period
     document.addEventListener("fullscreenchange", () => {
-      console.log("[FullscreenChange] fullscreenElement:", document.fullscreenElement);
+      console.log("[FullscreenChange] fullscreenElement:", document.fullscreenElement, "guard:", fullscreenGuard);
+      
+      if (!document.fullscreenElement && fullscreenGuard && pendingFullscreenElement) {
+        console.log("[Fullscreen] Re-entering fullscreen after unexpected exit");
+        setTimeout(() => {
+          if (fullscreenGuard && pendingFullscreenElement) {
+            pendingFullscreenElement.requestFullscreen().catch(() => {});
+          }
+        }, 50);
+      }
+      
+      if (document.fullscreenElement) {
+        // Clear pending element once we're in fullscreen
+        pendingFullscreenElement = null;
+      }
     });
 
     const enterVideoFullscreen = (video: HTMLVideoElement) => {
