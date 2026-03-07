@@ -158,7 +158,22 @@ export default defineContentScript({
 
     // Global fullscreen cooldown and guard
     let fullscreenCooldown = false;
-    let fullscreenGuard = false; // Prevents exit during our fullscreen request
+    let fullscreenGuard = false;
+
+    // Block exit fullscreen during guard
+    const originalExitFullscreen = document.exitFullscreen.bind(document);
+    document.exitFullscreen = function() {
+      if (fullscreenGuard) {
+        console.log("[Fullscreen] Blocked exitFullscreen during guard");
+        return Promise.resolve();
+      }
+      return originalExitFullscreen();
+    } as typeof document.exitFullscreen;
+
+    // Debug: log fullscreen changes
+    document.addEventListener("fullscreenchange", () => {
+      console.log("[FullscreenChange] fullscreenElement:", document.fullscreenElement);
+    });
 
     const enterVideoFullscreen = (video: HTMLVideoElement) => {
       // Only enter fullscreen, don't toggle if already fullscreen
