@@ -190,8 +190,6 @@ export default defineContentScript({
       setTimeout(() => {
         fullscreenCooldown = false;
       }, 3000);
-        fullscreenCooldown = false;
-      }, 3000);
 
       if (isYouTube) {
         const player = video.closest(".html5-video-player") as HTMLElement;
