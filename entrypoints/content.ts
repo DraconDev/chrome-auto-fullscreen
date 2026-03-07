@@ -157,12 +157,15 @@ export default defineContentScript({
     };
 
     const enterVideoFullscreen = (video: HTMLVideoElement) => {
-      console.log("[EnterFullscreen] called - fullscreenElement:", !!document.fullscreenElement);
-      console.trace("[EnterFullscreen] stack trace");
-      
       // Only enter fullscreen, don't toggle if already fullscreen
       if (document.fullscreenElement) {
         console.log("[Fullscreen] Already in fullscreen, skipping");
+        return;
+      }
+
+      // Check cooldown to prevent double-toggle
+      if ((video as any)._afFullscreenCooldown) {
+        console.log("[Fullscreen] Cooldown active, skipping");
         return;
       }
 
@@ -170,6 +173,12 @@ export default defineContentScript({
       const isOdysee = window.location.hostname.includes("odysee.com");
 
       console.log("[Fullscreen] Entering fullscreen for video");
+
+      // Set cooldown
+      (video as any)._afFullscreenCooldown = true;
+      setTimeout(() => {
+        (video as any)._afFullscreenCooldown = false;
+      }, 2000);
 
       if (isYouTube) {
         const player = video.closest(".html5-video-player") as HTMLElement;
