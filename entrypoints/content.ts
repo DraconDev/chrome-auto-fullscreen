@@ -156,10 +156,29 @@ export default defineContentScript({
       return videoPatterns.some(pattern => pattern.test(url));
     };
 
+    // Block Odysee's fullscreen handlers by intercepting during cooldown
+    const blockOdyseeFullscreen = () => {
+      const isOdysee = window.location.hostname.includes("odysee.com");
+      if (!isOdysee) return;
+
+      // Override requestFullscreen on video elements to add a check
+      const originalRequestFullscreen = HTMLElement.prototype.requestFullscreen;
+      HTMLElement.prototype.requestFullscreen = function(options?) {
+        if (fullscreenCooldown && this.tagName === "VIDEO") {
+          console.log("[Fullscreen] Blocked video requestFullscreen during cooldown");
+          return Promise.resolve();
+        }
+        return originalRequestFullscreen.call(this, options);
+      };
+    };
+    blockOdyseeFullscreen();
+
     // Debug: log fullscreen changes
     document.addEventListener("fullscreenchange", () => {
       console.log("[FullscreenChange] fullscreenElement:", document.fullscreenElement);
-      console.trace("[FullscreenChange] stack");
+      if (!document.fullscreenElement && fullscreenCooldown) {
+        console.log("[FullscreenChange] Unexpected exit during cooldown!");
+      }
     });
 
     // Global fullscreen cooldown
