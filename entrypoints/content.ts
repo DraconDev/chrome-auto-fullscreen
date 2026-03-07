@@ -385,24 +385,13 @@ export default defineContentScript({
       if (videoClickFullscreen) {
         const videoTarget = target.closest("video");
         if (videoTarget) {
-          const video = videoTarget as HTMLVideoElement;
-
-          console.log("[VideoClick] tagName:", target.tagName, "paused:", video.paused, "currentTime:", video.currentTime, "duration:", video.duration);
-
-          // Only fullscreen if paused - don't touch playing videos
-          if (video.paused) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            enterVideoFullscreen(video);
-          }
+          // Don't interfere with video clicks - auto-fullscreen handles this
           return;
         }
 
         const link = target.closest("a");
         if (link) {
           const href = link.getAttribute("href");
-          console.log("[VideoClick] Clicked link:", href);
           if (href && isVideoUrl(href)) {
             return;
           }
