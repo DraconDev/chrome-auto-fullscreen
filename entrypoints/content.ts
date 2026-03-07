@@ -156,6 +156,12 @@ export default defineContentScript({
       return videoPatterns.some(pattern => pattern.test(url));
     };
 
+    // Debug: log fullscreen changes
+    document.addEventListener("fullscreenchange", () => {
+      console.log("[FullscreenChange] fullscreenElement:", document.fullscreenElement);
+      console.trace("[FullscreenChange] stack");
+    });
+
     // Global fullscreen cooldown
     let fullscreenCooldown = false;
 
@@ -197,11 +203,17 @@ export default defineContentScript({
       }
 
       if (isOdysee) {
-        // Use native fullscreen instead of clicking Odysee's toggle button
-        // to avoid conflict with Odysee's own handlers
-        video.requestFullscreen().catch((err) => {
-          console.log("[Fullscreen] Native fullscreen failed:", err);
-        });
+        // Request fullscreen on the player container, not the video element
+        const player = video.closest(".video-js") as HTMLElement;
+        if (player) {
+          console.log("[Fullscreen] Requesting fullscreen on .video-js container");
+          player.requestFullscreen().catch((err) => {
+            console.log("[Fullscreen] Player fullscreen failed, trying video:", err);
+            video.requestFullscreen().catch(() => {});
+          });
+        } else {
+          video.requestFullscreen().catch(() => {});
+        }
         return;
       }
 
