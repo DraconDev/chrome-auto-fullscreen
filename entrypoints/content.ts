@@ -163,20 +163,25 @@ export default defineContentScript({
 
     // Re-enter fullscreen if exited during guard period
     document.addEventListener("fullscreenchange", () => {
-      console.log("[FullscreenChange] fullscreenElement:", document.fullscreenElement, "guard:", fullscreenGuard);
-      
+      console.log("[FullscreenChange] fullscreenElement:", document.fullscreenElement, "guard:", fullscreenGuard, "pendingElement:", !!pendingFullscreenElement);
+
       if (!document.fullscreenElement && fullscreenGuard && pendingFullscreenElement) {
         console.log("[Fullscreen] Re-entering fullscreen after unexpected exit");
+        const elementToEnter = pendingFullscreenElement;
         setTimeout(() => {
-          if (fullscreenGuard && pendingFullscreenElement) {
-            pendingFullscreenElement.requestFullscreen().catch(() => {});
+          if (fullscreenGuard && elementToEnter) {
+            elementToEnter.requestFullscreen().catch(() => {});
           }
         }, 50);
+      } else if (!document.fullscreenElement && fullscreenGuard && !pendingFullscreenElement) {
+        console.log("[Fullscreen] Guard active but no pending element - this is the bug!");
       }
-      
+
       if (document.fullscreenElement) {
-        // Clear pending element once we're in fullscreen
-        pendingFullscreenElement = null;
+        // Clear pending element after 500ms to allow re-entry detection
+        setTimeout(() => {
+          pendingFullscreenElement = null;
+        }, 500);
       }
     });
 
