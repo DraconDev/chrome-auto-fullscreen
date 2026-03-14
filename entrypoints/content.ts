@@ -20,18 +20,6 @@ export default defineContentScript({
       ctrlHeld = false;
     });
 
-    // --- Track if a video was playing before click ---
-    let videoWasPlaying = false;
-
-    document.addEventListener(
-      "mousedown",
-      () => {
-        const video = document.querySelector("video");
-        videoWasPlaying = !!video && !video.paused;
-      },
-      true,
-    );
-
     // --- Auto-fullscreen on initial load ---
     if (isEnabled && autoFullscreenEnabled && !ctrlHeld) {
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
@@ -41,15 +29,14 @@ export default defineContentScript({
 
     const tryFullscreen = () => {
       if (ctrlHeld) return;
-      if (!isEnabled || !autoFullscreenEnabled || !reEnterFullscreenOnNavigation) return;
-      if (videoWasPlaying) return;
       if (document.fullscreenElement) return;
+      if (!isEnabled || !autoFullscreenEnabled || !reEnterFullscreenOnNavigation) return;
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     };
 
     let lastPathname = location.pathname;
 
-    // YouTube: fires on real page transitions only (not Ctrl+click)
+    // YouTube: fires on real page transitions only
     document.addEventListener("yt-navigate-finish", () => {
       if (location.pathname !== lastPathname) {
         lastPathname = location.pathname;
