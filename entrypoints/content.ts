@@ -7,7 +7,7 @@ export default defineContentScript({
     let isEnabled = (await store.getValue()).enabled;
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
 
-    // --- Report modifier keys to background (shared across tabs) ---
+    // --- Modifier key tracking (via background for cross-tab state) ---
 
     const reportModifiers = (e: KeyboardEvent | MouseEvent) => {
       browser.runtime.sendMessage({
@@ -19,19 +19,50 @@ export default defineContentScript({
 
     document.addEventListener("keydown", reportModifiers);
     document.addEventListener("keyup", reportModifiers);
+    document.addEventListener("mousedown", reportModifiers, true);
 
-    // On click: report current modifier state. This runs in capture phase
-    // so it fires BEFORE any page click handlers.
-    document.addEventListener(
-      "mousedown",
-      (e) => {
-        reportModifiers(e);
-      },
-      true,
-    );
+    // --- Send F key when a new video starts playing ---
 
-    // --- Auto-fullscreen on initial load ---
-    // Queries background for modifier state (handles Ctrl+click opening new tab).
+    let lastVideoSrc = "";
+
+    const onVideoPlay = async (video: HTMLVideoElement) => {
+      if (!isEnabled || !autoFullscreenEnabled) return;
+      // Only fullscreen main player videos (not tiny ads/thumbnails)
+      if (video.offsetWidth < 200 || video.offsetHeight < 150) return;
+      const src = video.currentSrc || video.src;
+      if (!src || src === lastVideoSrc) return;
+      lastVideoSrc = src;
+
+      const resp = await browser.runtime.sendMessage({
+        action: "getModifierState",
+      });
+      if (resp?.ctrlHeld) return;
+
+      browser.runtime.sendMessage({ action: "sendFKey" });
+    };
+
+    // Listen for play events on all current and future videos
+    const attachPlayListener = (video: HTMLVideoElement) => {
+      video.addEventListener("play", () => onVideoPlay(video));
+    };
+
+    document.querySelectorAll("video").forEach(attachPlayListener);
+
+    // Watch for new video elements added to the DOM
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node instanceof HTMLVideoElement) {
+            attachPlayListener(node);
+          } else if (node instanceof Element) {
+            node.querySelectorAll("video").forEach(attachPlayListener);
+          }
+        }
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // --- Auto-fullscreen on initial load (window-level) ---
 
     if (isEnabled && autoFullscreenEnabled) {
       const resp = await browser.runtime.sendMessage({
@@ -41,19 +72,6 @@ export default defineContentScript({
         browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       }
     }
-
-    // --- Send F key on YouTube video navigation ---
-
-    const onYouTubeNav = async () => {
-      if (!isEnabled || !autoFullscreenEnabled) return;
-      const resp = await browser.runtime.sendMessage({
-        action: "getModifierState",
-      });
-      if (resp?.ctrlHeld) return;
-      browser.runtime.sendMessage({ action: "sendFKey" });
-    };
-
-    document.addEventListener("yt-navigate-finish", onYouTubeNav);
 
     // --- Hide fullscreen exit instructions ---
 
