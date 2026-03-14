@@ -20,39 +20,61 @@ export default defineContentScript({
       ctrlHeld = false;
     });
 
+    // --- Track if a video was playing before click ---
+    let videoWasPlaying = false;
+
+    document.addEventListener(
+      "mousedown",
+      () => {
+        const video = document.querySelector("video");
+        videoWasPlaying = !!video && !video.paused;
+      },
+      true,
+    );
+
     // --- Auto-fullscreen on initial load ---
     if (isEnabled && autoFullscreenEnabled && !ctrlHeld) {
-      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+      const video = document.querySelector("video");
+      if (video && !video.paused) {
+        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+      }
     }
 
     // --- Re-fullscreen on navigation ---
-    // Uses window-level fullscreen via background script.
-    // Element fullscreen (video.requestFullscreen) requires a user gesture,
-    // which is not available during automatic navigation detection.
 
-    const onNavigate = () => {
+    const tryFullscreen = () => {
       if (ctrlHeld) return;
-      if (isEnabled && autoFullscreenEnabled && reEnterFullscreenOnNavigation) {
-        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-      }
+      if (!isEnabled || !autoFullscreenEnabled || !reEnterFullscreenOnNavigation) return;
+      if (videoWasPlaying) return;
+      if (document.fullscreenElement) return;
+      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     };
 
     let lastPathname = location.pathname;
 
-    // YouTube SPA navigation (only fires on real page transitions)
+    // YouTube SPA navigation
     document.addEventListener("yt-navigate-finish", () => {
-      if (location.pathname !== lastPathname) {
-        lastPathname = location.pathname;
-        onNavigate();
-      }
+      if (location.pathname === lastPathname) return;
+      lastPathname = location.pathname;
+
+      // Video might not be loaded yet — poll until it starts playing
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        const video = document.querySelector("video");
+        if (video && !video.paused) {
+          clearInterval(interval);
+          tryFullscreen();
+        }
+        if (attempts > 20) clearInterval(interval);
+      }, 250);
     });
 
-    // Standard browser navigation (back/forward)
+    // Browser back/forward
     window.addEventListener("popstate", () => {
-      if (location.pathname !== lastPathname) {
-        lastPathname = location.pathname;
-        onNavigate();
-      }
+      if (location.pathname === lastPathname) return;
+      lastPathname = location.pathname;
+      setTimeout(tryFullscreen, 500);
     });
 
     // --- Hide fullscreen exit instructions ---
@@ -61,12 +83,6 @@ export default defineContentScript({
     style.textContent = `
       .Chrome-Full-Screen-Exit-Instruction { display: none !important; }
       .Full-Screen-Exit-Instruction { display: none !important; }
-      div[class*="fullscreen-exit"],
-      div[class*="fullscreen-notification"],
-      div[id*="fullscreen-exit"],
-      div[id*="fullscreen-notification"] {
-        display: none !important;
-      }
     `;
     document.head.appendChild(style);
 
