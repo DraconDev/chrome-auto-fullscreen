@@ -29,6 +29,7 @@ target/
 !*.age
 !test_secret.txt
 !secrets/**
+!*.events.jsonl
 !*.pub
 !.dracon/data/
 !.dracon/data/keys/
@@ -37,6 +38,7 @@ target/
 !Cargo.toml
 !clippy.toml
 !deny.toml
+!events.jsonl
 !flake.lock
 !flake.nix
 !rust-toolchain.toml
