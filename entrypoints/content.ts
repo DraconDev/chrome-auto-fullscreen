@@ -11,11 +11,36 @@ export default defineContentScript({
     let primaryColor = (await store.getValue()).primaryColor;
     let topEdgeExitEnabled = (await store.getValue()).topEdgeExitEnabled;
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
+    let reEnterFullscreenOnNavigation = (await store.getValue()).reEnterFullscreenOnNavigation;
     const TOP_EDGE_THRESHOLD = 1;
 
     if (isEnabled && autoFullscreenEnabled) {
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     }
+
+    let lastUrl = location.href;
+    const checkNavigation = () => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        if (isEnabled && autoFullscreenEnabled && reEnterFullscreenOnNavigation) {
+          browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+        }
+      }
+    };
+
+    window.addEventListener("popstate", checkNavigation);
+    document.addEventListener("yt-navigate-finish", checkNavigation);
+
+    const originalPushState = history.pushState;
+    history.pushState = function (...args) {
+      originalPushState.apply(this, args);
+      checkNavigation();
+    };
+    const originalReplaceState = history.replaceState;
+    history.replaceState = function (...args) {
+      originalReplaceState.apply(this, args);
+      checkNavigation();
+    };
 
     const updateStyles = () => {
       document.documentElement.style.setProperty("--af-color", primaryColor);
@@ -125,6 +150,7 @@ export default defineContentScript({
       if (e.clientX >= window.innerWidth - SCROLLBAR_THRESHOLD) return;
 
       if (e.button !== 0) return;
+      if (e.ctrlKey || e.metaKey || e.shiftKey) return;
 
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) return;
