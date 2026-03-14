@@ -219,6 +219,7 @@ export default defineContentScript({
       primaryColor = newValue.primaryColor;
       topEdgeExitEnabled = newValue.topEdgeExitEnabled;
       autoFullscreenEnabled = newValue.autoFullscreenEnabled;
+      reEnterFullscreenOnNavigation = newValue.reEnterFullscreenOnNavigation;
       updateStyles();
       if (!isEnabled) {
         browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
