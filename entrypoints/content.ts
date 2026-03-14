@@ -44,8 +44,12 @@ export default defineContentScript({
 
     // --- Send F key on YouTube video navigation ---
 
-    const onYouTubeNav = () => {
+    const onYouTubeNav = async () => {
       if (!isEnabled || !autoFullscreenEnabled) return;
+      const resp = await browser.runtime.sendMessage({
+        action: "getModifierState",
+      });
+      if (resp?.ctrlHeld) return;
       browser.runtime.sendMessage({ action: "sendFKey" });
     };
 
