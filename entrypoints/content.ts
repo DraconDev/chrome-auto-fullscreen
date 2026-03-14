@@ -7,19 +7,30 @@ export default defineContentScript({
     let isEnabled = (await store.getValue()).enabled;
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
 
-    // --- Modifier key tracking (via background for cross-tab state) ---
+    // --- Track new-tab intent (Ctrl+click or MMB) via background ---
 
-    const reportModifiers = (e: KeyboardEvent | MouseEvent) => {
-      browser.runtime.sendMessage({
-        action: "setModifiers",
-        ctrl: e.ctrlKey,
-        meta: e.metaKey,
-      });
+    const reportNewTabIntent = (e: MouseEvent) => {
+      const ctrl = e.ctrlKey || e.metaKey;
+      const mmb = e.button === 1;
+      if (ctrl || mmb) {
+        browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
+      } else {
+        browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
+      }
     };
 
-    document.addEventListener("keydown", reportModifiers);
-    document.addEventListener("keyup", reportModifiers);
-    document.addEventListener("mousedown", reportModifiers, true);
+    document.addEventListener("keydown", (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
+      }
+    });
+    document.addEventListener("keyup", (e) => {
+      if (!e.ctrlKey && !e.metaKey) {
+        browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
+      }
+    });
+    // Capture phase so we fire BEFORE the browser opens a new tab
+    document.addEventListener("mousedown", reportNewTabIntent, true);
 
     // --- Send F key when a new video starts playing ---
 
