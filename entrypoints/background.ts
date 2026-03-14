@@ -2,62 +2,83 @@ import { defineBackground } from "wxt/sandbox";
 
 export default defineBackground({
   main() {
-    let savedBounds: chrome.windows.UpdateInfo | null = null;
+    // Track modifier key state globally (shared across tabs).
+    // Updated by content scripts on keydown/keyup/click.
+    let ctrlHeld = false;
 
-    const saveBounds = (win: chrome.windows.Window) => {
-      if (win.state === "fullscreen") return;
-      savedBounds = {
-        state: win.state === "maximized" ? "maximized" : "normal",
-        left: win.left,
-        top: win.top,
-        width: win.width,
-        height: win.height,
-      };
-    };
-
-    const restoreWindow = (winId: number) => {
-      if (savedBounds && savedBounds.state === "maximized") {
-        chrome.windows.update(winId, { state: "maximized" });
-      } else if (savedBounds && savedBounds.width && savedBounds.height) {
-        chrome.windows.update(winId, {
-          state: "normal",
-          left: savedBounds.left,
-          top: savedBounds.top,
-          width: savedBounds.width,
-          height: savedBounds.height,
-        });
-      } else {
-        chrome.windows.update(winId, { state: "normal" });
+    browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      // Content script reports modifier state
+      if (message.action === "setModifiers") {
+        ctrlHeld = message.ctrl || message.meta || false;
+        return;
       }
-    };
 
-    browser.runtime.onMessage.addListener((message) => {
-      if (message.action === "toggleWindowFullscreen") {
-        chrome.windows.getCurrent((win) => {
-          if (win.id === undefined) return;
-          if (win.state === "fullscreen") {
-            restoreWindow(win.id);
-          } else {
-            saveBounds(win);
-            chrome.windows.update(win.id, { state: "fullscreen" });
+      // New tab queries modifier state (check-and-clear)
+      if (message.action === "getModifierState") {
+        sendResponse({ ctrlHeld });
+        ctrlHeld = false;
+        return true;
+      }
+
+      // Send F key to trigger fullscreen
+      if (message.action === "sendFKey") {
+        const tabId = sender.tab?.id;
+        if (!tabId) return;
+
+        // Try debugger API first (real keypress, YouTube handles it natively)
+        chrome.debugger.attach({ tabId }, "1.3", () => {
+          if (chrome.runtime.lastError) {
+            // Debugger not available — fall back to player API
+            fallbackFullscreen(tabId);
+            return;
           }
-        });
-      } else if (message.action === "setWindowFullscreen") {
-        chrome.windows.getCurrent((win) => {
-          if (win.id === undefined) return;
-          if (win.state !== "fullscreen") {
-            saveBounds(win);
-            chrome.windows.update(win.id, { state: "fullscreen" });
-          }
-        });
-      } else if (message.action === "exitWindowFullscreen") {
-        chrome.windows.getCurrent((win) => {
-          if (win.id === undefined) return;
-          if (win.state === "fullscreen") {
-            restoreWindow(win.id);
-          }
+          // Send F keydown
+          chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", {
+            type: "keyDown",
+            key: "f",
+            code: "KeyF",
+            windowsVirtualKeyCode: 70,
+            nativeVirtualKeyCode: 70,
+          });
+          // Send F keyup
+          chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", {
+            type: "keyUp",
+            key: "f",
+            code: "KeyF",
+            windowsVirtualKeyCode: 70,
+            nativeVirtualKeyCode: 70,
+          });
+          // Detach debugger after a short delay
+          setTimeout(() => {
+            chrome.debugger.detach({ tabId });
+          }, 500);
         });
       }
     });
+
+    function fallbackFullscreen(tabId: number) {
+      chrome.scripting.executeScript({
+        target: { tabId },
+        world: "MAIN",
+        func: () => {
+          const player =
+            document.querySelector("#movie_player") ||
+            document.querySelector(".html5-video-player");
+          if (player) {
+            const methods = [
+              "toggleFullscreen",
+              "setFullscreen",
+              "enterFullscreen",
+            ];
+            for (const m of methods) {
+              if (typeof (player as any)[m] === "function") {
+                (player as any)[m](true);
+                return;
+              }
+            }
+          }
+        },
+      });
+    }
   },
 });
