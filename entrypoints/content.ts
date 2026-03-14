@@ -7,31 +7,27 @@ export default defineContentScript({
     let isEnabled = (await store.getValue()).enabled;
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
 
-    // --- Cache new-tab intent LOCALLY (not re-queried from background) ---
-    // This is the key fix: once we know Ctrl/MMB was used, we remember it
-    // for the entire page lifecycle. Re-querying the background would fail
-    // because the background clears the flag on first read.
+    // --- Detect new-tab intent (Ctrl+click, MMB) ---
+    // The background stores this when the ORIGINAL tab's mousedown fires.
+    // We query with retries because the background might not have received
+    // the message yet when this new tab's content script loads.
 
     let newTabIntent = false;
 
-    // Query background ONCE on load and cache the result
-    const resp = await browser.runtime.sendMessage({
-      action: "getModifierState",
-    });
-    if (resp?.ctrlHeld) {
-      newTabIntent = true;
-    }
-
-    // Report future modifier changes to background (for OTHER tabs)
-    const reportModifiers = (e: MouseEvent) => {
-      const ctrl = e.ctrlKey || e.metaKey;
-      const mmb = e.button === 1;
-      browser.runtime.sendMessage({
-        action: "setModifiers",
-        ctrl: ctrl || mmb,
-      });
+    const checkNewTabIntent = async (): Promise<boolean> => {
+      for (let i = 0; i < 5; i++) {
+        const resp = await browser.runtime.sendMessage({
+          action: "getModifierState",
+        });
+        if (resp?.ctrlHeld) return true;
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return false;
     };
 
+    newTabIntent = await checkNewTabIntent();
+
+    // Report future modifier changes to background (for OTHER new tabs)
     document.addEventListener("keydown", (e) => {
       if (e.ctrlKey || e.metaKey) {
         browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
@@ -42,60 +38,37 @@ export default defineContentScript({
         browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
       }
     });
-    document.addEventListener("mousedown", reportModifiers, true);
-
-    // --- Find videos including inside shadow DOM ---
-
-    const findAllVideos = (root: Document | Element | ShadowRoot): HTMLVideoElement[] => {
-      const videos: HTMLVideoElement[] = [];
-      const walk = (node: Element | ShadowRoot) => {
-        if (node instanceof HTMLVideoElement) {
-          videos.push(node);
-          return;
-        }
-        const children = "querySelectorAll" in node ? node.querySelectorAll("video") : [];
-        videos.push(...(children as NodeListOf<HTMLVideoElement>));
-        // Traverse shadow DOMs
-        const all = "querySelectorAll" in node ? node.querySelectorAll("*") : [];
-        for (const el of all) {
-          if (el.shadowRoot) walk(el.shadowRoot);
-        }
-      };
-      walk(root);
-      return videos;
-    };
+    document.addEventListener(
+      "mousedown",
+      (e: MouseEvent) => {
+        browser.runtime.sendMessage({
+          action: "setModifiers",
+          ctrl: !!(e.ctrlKey || e.metaKey || e.button === 1),
+        });
+      },
+      true,
+    );
 
     // --- Send F key when a new video starts playing ---
+    // Uses document-level play event listener (no tag selectors needed).
+    // play events bubble up from <video> elements.
 
-    const seenVideos = new Set<HTMLVideoElement>();
-
-    const onVideoPlay = (video: HTMLVideoElement) => {
+    document.addEventListener("play", (e) => {
       if (!isEnabled || !autoFullscreenEnabled) return;
       if (newTabIntent) return;
-      // Only main player videos
+
+      const video = e.target;
+      if (!(video instanceof HTMLVideoElement)) return;
+      // Only main player videos (not tiny ads/preloads)
       if (video.offsetWidth < 200 || video.offsetHeight < 150) return;
 
-      // Wait a bit for currentSrc to populate
+      // Small delay so currentSrc is populated
       setTimeout(() => {
         const src = video.currentSrc || video.src;
         if (!src) return;
-        if (seenVideos.has(video)) return;
-        seenVideos.add(video);
-
         browser.runtime.sendMessage({ action: "sendFKey" });
-      }, 200);
-    };
-
-    // Poll for videos (handles Shadow DOM and dynamic loading)
-    setInterval(() => {
-      const videos = findAllVideos(document);
-      for (const video of videos) {
-        if (!seenVideos.has(video)) {
-          seenVideos.add(video);
-          video.addEventListener("play", () => onVideoPlay(video));
-        }
-      }
-    }, 500);
+      }, 300);
+    }, true);
 
     // --- Auto-fullscreen on initial load (window-level) ---
 
