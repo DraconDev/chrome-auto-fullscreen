@@ -7,7 +7,6 @@ export type AppState = {
   primaryColor: string;
   topEdgeExitEnabled: boolean;
   autoFullscreenEnabled: boolean;
-  reEnterFullscreenOnNavigation: boolean;
 };
 
 export type Store = AppState & {
