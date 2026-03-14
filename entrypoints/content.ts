@@ -34,10 +34,7 @@ export default defineContentScript({
 
     // --- Auto-fullscreen on initial load ---
     if (isEnabled && autoFullscreenEnabled && !ctrlHeld) {
-      const video = document.querySelector("video");
-      if (video && !video.paused) {
-        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-      }
+      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     }
 
     // --- Re-fullscreen on navigation ---
@@ -52,29 +49,20 @@ export default defineContentScript({
 
     let lastPathname = location.pathname;
 
-    // YouTube SPA navigation
+    // YouTube: fires on real page transitions only (not Ctrl+click)
     document.addEventListener("yt-navigate-finish", () => {
-      if (location.pathname === lastPathname) return;
-      lastPathname = location.pathname;
-
-      // Video might not be loaded yet — poll until it starts playing
-      let attempts = 0;
-      const interval = setInterval(() => {
-        attempts++;
-        const video = document.querySelector("video");
-        if (video && !video.paused) {
-          clearInterval(interval);
-          tryFullscreen();
-        }
-        if (attempts > 20) clearInterval(interval);
-      }, 250);
+      if (location.pathname !== lastPathname) {
+        lastPathname = location.pathname;
+        tryFullscreen();
+      }
     });
 
-    // Browser back/forward
+    // Other sites: browser back/forward
     window.addEventListener("popstate", () => {
-      if (location.pathname === lastPathname) return;
-      lastPathname = location.pathname;
-      setTimeout(tryFullscreen, 500);
+      if (location.pathname !== lastPathname) {
+        lastPathname = location.pathname;
+        tryFullscreen();
+      }
     });
 
     // --- Hide fullscreen exit instructions ---
