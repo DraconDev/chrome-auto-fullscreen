@@ -18,29 +18,53 @@ export default defineContentScript({
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     }
 
-    let lastUrl = location.href;
-    const checkNavigation = () => {
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        if (isEnabled && autoFullscreenEnabled && reEnterFullscreenOnNavigation) {
-          browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-        }
+    // --- Navigation detection (covers all SPA navigation patterns) ---
+
+    const onNavigate = () => {
+      if (isEnabled && autoFullscreenEnabled && reEnterFullscreenOnNavigation) {
+        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       }
     };
 
-    window.addEventListener("popstate", checkNavigation);
-    document.addEventListener("yt-navigate-finish", checkNavigation);
+    let lastUrl = location.href;
 
-    const originalPushState = history.pushState;
-    history.pushState = function (...args) {
-      originalPushState.apply(this, args);
-      checkNavigation();
+    const checkUrlChange = () => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        onNavigate();
+      }
     };
-    const originalReplaceState = history.replaceState;
-    history.replaceState = function (...args) {
-      originalReplaceState.apply(this, args);
-      checkNavigation();
+
+    // Patch history.pushState and history.replaceState
+    const patchHistoryMethod = (method: "pushState" | "replaceState") => {
+      const original = history[method];
+      history[method] = function (...args: Parameters<typeof original>) {
+        original.apply(this, args);
+        queueMicrotask(checkUrlChange);
+      };
     };
+    patchHistoryMethod("pushState");
+    patchHistoryMethod("replaceState");
+
+    // Standard browser events
+    window.addEventListener("popstate", checkUrlChange);
+    window.addEventListener("hashchange", checkUrlChange);
+
+    // YouTube-specific navigation event
+    document.addEventListener("yt-navigate-finish", checkUrlChange);
+
+    // MutationObserver as a safety net for DOM-driven SPA navigations
+    let navDebounce: ReturnType<typeof setTimeout> | null = null;
+    const observer = new MutationObserver(() => {
+      if (navDebounce) clearTimeout(navDebounce);
+      navDebounce = setTimeout(checkUrlChange, 100);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Periodic fallback: catches anything the other methods miss
+    setInterval(checkUrlChange, 500);
+
+    // --- Styles ---
 
     const updateStyles = () => {
       document.documentElement.style.setProperty("--af-color", primaryColor);
@@ -98,6 +122,8 @@ export default defineContentScript({
     `;
     document.head.appendChild(style);
 
+    // --- Charge ring ---
+
     let activeChargeRing: HTMLDivElement | null = null;
 
     const startCharge = (x: number, y: number) => {
@@ -131,6 +157,8 @@ export default defineContentScript({
       }
     };
 
+    // --- Long press / fullscreen toggle ---
+
     let longPressTimer: ReturnType<typeof setTimeout> | null = null;
     let startX = 0;
     let startY = 0;
@@ -141,8 +169,15 @@ export default defineContentScript({
       browser.runtime.sendMessage({ action: "toggleWindowFullscreen" });
     };
 
+    const hasModifier = (e: MouseEvent): boolean => {
+      return !!(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey);
+    };
+
     const handleMouseDown = (e: MouseEvent) => {
-      if (longPressTimer) clearTimeout(longPressTimer);
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
 
       if (!isEnabled) return;
 
@@ -150,7 +185,9 @@ export default defineContentScript({
       if (e.clientX >= window.innerWidth - SCROLLBAR_THRESHOLD) return;
 
       if (e.button !== 0) return;
-      if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+
+      // Block when modifier keys are held (Ctrl+click, Shift+click, etc.)
+      if (hasModifier(e)) return;
 
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) return;
@@ -211,6 +248,8 @@ export default defineContentScript({
       }
     };
 
+    // --- Settings watcher ---
+
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
       rippleEnabled = newValue.rippleEnabled;
@@ -225,6 +264,8 @@ export default defineContentScript({
         browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
       }
     });
+
+    // --- Event listeners ---
 
     document.addEventListener("mousedown", handleMouseDown, { passive: false });
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
