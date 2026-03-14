@@ -20,18 +20,14 @@ export default defineContentScript({
 
     // --- Navigation detection (covers all SPA navigation patterns) ---
 
-    const onNavigate = () => {
-      if (isEnabled && autoFullscreenEnabled && reEnterFullscreenOnNavigation) {
-        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-      }
-    };
+    let lastPathname = location.pathname;
 
-    let lastUrl = location.href;
-
-    const checkUrlChange = () => {
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        onNavigate();
+    const checkNavigation = () => {
+      if (location.pathname !== lastPathname) {
+        lastPathname = location.pathname;
+        if (isEnabled && autoFullscreenEnabled && reEnterFullscreenOnNavigation) {
+          browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+        }
       }
     };
 
@@ -40,29 +36,36 @@ export default defineContentScript({
       const original = history[method];
       history[method] = function (...args: Parameters<typeof original>) {
         original.apply(this, args);
-        queueMicrotask(checkUrlChange);
+        queueMicrotask(checkNavigation);
       };
     };
     patchHistoryMethod("pushState");
     patchHistoryMethod("replaceState");
 
     // Standard browser events
-    window.addEventListener("popstate", checkUrlChange);
-    window.addEventListener("hashchange", checkUrlChange);
+    window.addEventListener("popstate", checkNavigation);
+    window.addEventListener("hashchange", checkNavigation);
 
     // YouTube-specific navigation event
-    document.addEventListener("yt-navigate-finish", checkUrlChange);
+    document.addEventListener("yt-navigate-finish", checkNavigation);
 
     // MutationObserver as a safety net for DOM-driven SPA navigations
     let navDebounce: ReturnType<typeof setTimeout> | null = null;
     const observer = new MutationObserver(() => {
       if (navDebounce) clearTimeout(navDebounce);
-      navDebounce = setTimeout(checkUrlChange, 100);
+      navDebounce = setTimeout(checkNavigation, 150);
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
     // Periodic fallback: catches anything the other methods miss
-    setInterval(checkUrlChange, 500);
+    setInterval(checkNavigation, 1000);
+
+    // --- Fullscreenchange listener (sync state on ESC / native exit) ---
+
+    document.addEventListener("fullscreenchange", () => {
+      // When exiting element fullscreen via ESC, just let it happen naturally.
+      // When entering element fullscreen, nothing extra needed.
+    });
 
     // --- Styles ---
 
@@ -157,17 +160,43 @@ export default defineContentScript({
       }
     };
 
+    // --- Fullscreen helpers ---
+
+    const findVideo = (): HTMLVideoElement | null => {
+      const videos = document.querySelectorAll("video");
+      for (const v of videos) {
+        if (v.offsetWidth > 100 && v.offsetHeight > 100) return v;
+      }
+      return videos[0] || null;
+    };
+
+    const enterFullscreen = () => {
+      const video = findVideo();
+      if (video && document.fullscreenEnabled) {
+        video.requestFullscreen().catch(() => {
+          browser.runtime.sendMessage({ action: "toggleWindowFullscreen" });
+        });
+      } else {
+        browser.runtime.sendMessage({ action: "toggleWindowFullscreen" });
+      }
+    };
+
+    const exitFullscreen = () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {
+          browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
+        });
+      } else {
+        browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
+      }
+    };
+
     // --- Long press / fullscreen toggle ---
 
     let longPressTimer: ReturnType<typeof setTimeout> | null = null;
     let startX = 0;
     let startY = 0;
     const MOVEMENT_THRESHOLD = 2;
-
-    const toggleFullscreen = (x: number, y: number) => {
-      completeCharge();
-      browser.runtime.sendMessage({ action: "toggleWindowFullscreen" });
-    };
 
     const hasModifier = (e: MouseEvent): boolean => {
       return !!(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey);
@@ -212,21 +241,23 @@ export default defineContentScript({
       startY = e.clientY;
 
       if (longPressDelay === 0) {
-        toggleFullscreen(startX, startY);
+        completeCharge();
+        enterFullscreen();
         return;
       }
 
       startCharge(startX, startY);
 
       longPressTimer = setTimeout(() => {
-        toggleFullscreen(startX, startY);
         longPressTimer = null;
+        enterFullscreen();
+        completeCharge();
       }, longPressDelay);
     };
 
     const handleMouseMove = (e: MouseEvent) => {
       if (topEdgeExitEnabled && e.clientY <= TOP_EDGE_THRESHOLD) {
-        browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
+        exitFullscreen();
         return;
       }
 
@@ -240,7 +271,14 @@ export default defineContentScript({
       }
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
+      // Safety net: cancel if modifier keys are held on mouseup
+      if (longPressTimer && hasModifier(e)) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+        cancelCharge();
+        return;
+      }
       if (longPressTimer) {
         clearTimeout(longPressTimer);
         longPressTimer = null;
@@ -261,7 +299,7 @@ export default defineContentScript({
       reEnterFullscreenOnNavigation = newValue.reEnterFullscreenOnNavigation;
       updateStyles();
       if (!isEnabled) {
-        browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
+        exitFullscreen();
       }
     });
 
