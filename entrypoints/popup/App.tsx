@@ -116,16 +116,6 @@ unwatch();
           />
 
           <Toggle
-            label="Re-fullscreen on navigation"
-            checked={!!state?.reEnterFullscreenOnNavigation}
-            onChange={() =>
-              updateState({
-                reEnterFullscreenOnNavigation: !state?.reEnterFullscreenOnNavigation,
-              })
-            }
-          />
-
-          <Toggle
             label="Block on buttons/links"
             checked={!!state?.strictSafety}
             onChange={() => updateState({ strictSafety: !state?.strictSafety })}
