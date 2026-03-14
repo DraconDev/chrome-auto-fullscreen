@@ -18,54 +18,53 @@ export default defineContentScript({
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     }
 
-    // --- Navigation detection (covers all SPA navigation patterns) ---
+    // --- Navigation detection with modified-click guard ---
 
     let lastPathname = location.pathname;
+    let modifiedClickPending = false;
+    let modifiedClickTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    const checkNavigation = () => {
-      if (location.pathname !== lastPathname) {
-        lastPathname = location.pathname;
-        if (isEnabled && autoFullscreenEnabled && reEnterFullscreenOnNavigation) {
-          browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-        }
+    const onNavigate = () => {
+      if (isEnabled && autoFullscreenEnabled && reEnterFullscreenOnNavigation) {
+        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       }
     };
 
-    // Patch history.pushState and history.replaceState
+    // Patch pushState/replaceState — but skip if a modified click is in progress.
+    // This is the key fix: YouTube calls pushState from its click handler
+    // synchronously during mousedown. Our capture-phase mousedown listener
+    // sets modifiedClickPending BEFORE YouTube's handler runs. So when
+    // YouTube calls pushState, our patch sees the flag and skips fullscreen.
     const patchHistoryMethod = (method: "pushState" | "replaceState") => {
       const original = history[method];
       history[method] = function (...args: Parameters<typeof original>) {
         original.apply(this, args);
-        queueMicrotask(checkNavigation);
+        if (!modifiedClickPending && location.pathname !== lastPathname) {
+          lastPathname = location.pathname;
+          onNavigate();
+        }
       };
     };
     patchHistoryMethod("pushState");
     patchHistoryMethod("replaceState");
 
-    // Standard browser events
-    window.addEventListener("popstate", checkNavigation);
-    window.addEventListener("hashchange", checkNavigation);
-
-    // YouTube-specific navigation event
-    document.addEventListener("yt-navigate-finish", checkNavigation);
-
-    // MutationObserver as a safety net for DOM-driven SPA navigations
-    let navDebounce: ReturnType<typeof setTimeout> | null = null;
-    const observer = new MutationObserver(() => {
-      if (navDebounce) clearTimeout(navDebounce);
-      navDebounce = setTimeout(checkNavigation, 150);
+    // Standard browser events — these only fire on real navigations
+    window.addEventListener("popstate", () => {
+      if (location.pathname !== lastPathname) {
+        lastPathname = location.pathname;
+        onNavigate();
+      }
     });
-    observer.observe(document.body, { childList: true, subtree: true });
 
-    // Periodic fallback: catches anything the other methods miss
-    setInterval(checkNavigation, 1000);
-
-    // --- Fullscreenchange listener (sync state on ESC / native exit) ---
-
-    document.addEventListener("fullscreenchange", () => {
-      // When exiting element fullscreen via ESC, just let it happen naturally.
-      // When entering element fullscreen, nothing extra needed.
-    });
+    // YouTube-specific navigation events (only fire on actual page transitions)
+    const ytNavHandler = () => {
+      if (location.pathname !== lastPathname) {
+        lastPathname = location.pathname;
+        onNavigate();
+      }
+    };
+    document.addEventListener("yt-navigate-finish", ytNavHandler);
+    document.addEventListener("yt-page-data-updated", ytNavHandler);
 
     // --- Styles ---
 
@@ -202,6 +201,18 @@ export default defineContentScript({
       return !!(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey);
     };
 
+    // Walk up the DOM to find if the click target is a video or inside a video player
+    const findClickVideo = (el: Element | null): HTMLVideoElement | null => {
+      let node: Element | null = el;
+      for (let i = 0; i < 10 && node; i++) {
+        if (node.tagName === "VIDEO") return node as HTMLVideoElement;
+        const vid = node.querySelector?.("video");
+        if (vid && vid.offsetWidth > 50) return vid;
+        node = node.parentElement;
+      }
+      return null;
+    };
+
     const handleMouseDown = (e: MouseEvent) => {
       if (longPressTimer) {
         clearTimeout(longPressTimer);
@@ -210,18 +221,54 @@ export default defineContentScript({
 
       if (!isEnabled) return;
 
+      // Track modified clicks for navigation detection guard.
+      // Uses capture phase so this runs BEFORE YouTube's own click handlers.
+      if (hasModifier(e)) {
+        modifiedClickPending = true;
+        if (modifiedClickTimeout) clearTimeout(modifiedClickTimeout);
+        modifiedClickTimeout = setTimeout(() => {
+          modifiedClickPending = false;
+          modifiedClickTimeout = null;
+        }, 1000);
+        return;
+      } else {
+        modifiedClickPending = false;
+        if (modifiedClickTimeout) {
+          clearTimeout(modifiedClickTimeout);
+          modifiedClickTimeout = null;
+        }
+      }
+
       const SCROLLBAR_THRESHOLD = 20;
       if (e.clientX >= window.innerWidth - SCROLLBAR_THRESHOLD) return;
 
       if (e.button !== 0) return;
 
-      // Block when modifier keys are held (Ctrl+click, Shift+click, etc.)
-      if (hasModifier(e)) return;
-
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) return;
 
       const target = e.target as Element;
+
+      // Video bypass: clicking a video (or its player container) always triggers
+      // fullscreen, even if strictSafety would normally block it (e.g. video
+      // wrapped in an <a> tag on YouTube).
+      const videoTarget = findClickVideo(target);
+      if (videoTarget) {
+        startX = e.clientX;
+        startY = e.clientY;
+        if (longPressDelay === 0) {
+          completeCharge();
+          enterFullscreen();
+          return;
+        }
+        startCharge(startX, startY);
+        longPressTimer = setTimeout(() => {
+          longPressTimer = null;
+          enterFullscreen();
+          completeCharge();
+        }, longPressDelay);
+        return;
+      }
 
       if (strictSafety) {
         if (target) {
@@ -272,7 +319,6 @@ export default defineContentScript({
     };
 
     const handleMouseUp = (e: MouseEvent) => {
-      // Safety net: cancel if modifier keys are held on mouseup
       if (longPressTimer && hasModifier(e)) {
         clearTimeout(longPressTimer);
         longPressTimer = null;
@@ -304,8 +350,13 @@ export default defineContentScript({
     });
 
     // --- Event listeners ---
+    // Use capture phase for mousedown so our modifiedClickPending flag is set
+    // BEFORE YouTube's own click handlers call pushState.
 
-    document.addEventListener("mousedown", handleMouseDown, { passive: false });
+    document.addEventListener("mousedown", handleMouseDown, {
+      passive: false,
+      capture: true,
+    });
     document.addEventListener("mousemove", handleMouseMove, { passive: true });
     document.addEventListener("mouseup", handleMouseUp, { passive: true });
     document.addEventListener("dragstart", handleMouseUp, { passive: true });
