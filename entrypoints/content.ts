@@ -6,51 +6,50 @@ export default defineContentScript({
   async main() {
     let isEnabled = (await store.getValue()).enabled;
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
-    let reEnterFullscreenOnNavigation = (await store.getValue()).reEnterFullscreenOnNavigation;
 
-    // --- Modifier key tracking ---
-    let ctrlHeld = false;
-    document.addEventListener("keydown", (e) => {
-      if (e.ctrlKey || e.metaKey) ctrlHeld = true;
-    });
-    document.addEventListener("keyup", (e) => {
-      if (!e.ctrlKey && !e.metaKey) ctrlHeld = false;
-    });
-    window.addEventListener("blur", () => {
-      ctrlHeld = false;
-    });
+    // --- Report modifier keys to background (shared across tabs) ---
 
-    // --- Auto-fullscreen on initial load ---
-    if (isEnabled && autoFullscreenEnabled && !ctrlHeld) {
-      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-    }
-
-    // --- Re-fullscreen on navigation ---
-
-    const tryFullscreen = () => {
-      if (ctrlHeld) return;
-      if (document.fullscreenElement) return;
-      if (!isEnabled || !autoFullscreenEnabled || !reEnterFullscreenOnNavigation) return;
-      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+    const reportModifiers = (e: KeyboardEvent | MouseEvent) => {
+      browser.runtime.sendMessage({
+        action: "setModifiers",
+        ctrl: e.ctrlKey,
+        meta: e.metaKey,
+      });
     };
 
-    let lastPathname = location.pathname;
+    document.addEventListener("keydown", reportModifiers);
+    document.addEventListener("keyup", reportModifiers);
 
-    // YouTube: fires on real page transitions only
-    document.addEventListener("yt-navigate-finish", () => {
-      if (location.pathname !== lastPathname) {
-        lastPathname = location.pathname;
-        tryFullscreen();
-      }
-    });
+    // On click: report current modifier state. This runs in capture phase
+    // so it fires BEFORE any page click handlers.
+    document.addEventListener(
+      "mousedown",
+      (e) => {
+        reportModifiers(e);
+      },
+      true,
+    );
 
-    // Other sites: browser back/forward
-    window.addEventListener("popstate", () => {
-      if (location.pathname !== lastPathname) {
-        lastPathname = location.pathname;
-        tryFullscreen();
+    // --- Auto-fullscreen on initial load ---
+    // Queries background for modifier state (handles Ctrl+click opening new tab).
+
+    if (isEnabled && autoFullscreenEnabled) {
+      const resp = await browser.runtime.sendMessage({
+        action: "getModifierState",
+      });
+      if (!resp?.ctrlHeld) {
+        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       }
-    });
+    }
+
+    // --- Send F key on YouTube video navigation ---
+
+    const onYouTubeNav = () => {
+      if (!isEnabled || !autoFullscreenEnabled) return;
+      browser.runtime.sendMessage({ action: "sendFKey" });
+    };
+
+    document.addEventListener("yt-navigate-finish", onYouTubeNav);
 
     // --- Hide fullscreen exit instructions ---
 
@@ -66,7 +65,6 @@ export default defineContentScript({
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
       autoFullscreenEnabled = newValue.autoFullscreenEnabled;
-      reEnterFullscreenOnNavigation = newValue.reEnterFullscreenOnNavigation;
       if (!isEnabled) {
         browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
       }
