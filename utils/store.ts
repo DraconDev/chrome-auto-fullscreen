@@ -11,7 +11,6 @@ export const defaultStore: Store = {
   primaryColor: "#00FFFF",
   topEdgeExitEnabled: true,
   autoFullscreenEnabled: true,
-  reEnterFullscreenOnNavigation: true,
 };
 
 export const store = storage.defineItem<Store>("sync:store", {
