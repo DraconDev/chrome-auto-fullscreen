@@ -20,59 +20,40 @@ export default defineContentScript({
       ctrlHeld = false;
     });
 
-    // --- Fullscreen on navigation: press F on a playing video ---
+    // --- Auto-fullscreen on initial load ---
+    if (isEnabled && autoFullscreenEnabled && !ctrlHeld) {
+      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+    }
 
-    const tryFullscreen = () => {
-      if (!isEnabled || !autoFullscreenEnabled || ctrlHeld) return;
-      const video = document.querySelector("video");
-      if (video && !video.paused) {
-        document.dispatchEvent(
-          new KeyboardEvent("keydown", {
-            key: "f",
-            code: "KeyF",
-            keyCode: 70,
-            which: 70,
-            bubbles: true,
-          }),
-        );
+    // --- Re-fullscreen on navigation ---
+    // Uses window-level fullscreen via background script.
+    // Element fullscreen (video.requestFullscreen) requires a user gesture,
+    // which is not available during automatic navigation detection.
+
+    const onNavigate = () => {
+      if (ctrlHeld) return;
+      if (isEnabled && autoFullscreenEnabled && reEnterFullscreenOnNavigation) {
+        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       }
     };
 
-    // YouTube: wait for video to load after navigation, then press F
-    const onYouTubeNav = () => {
-      if (!isEnabled || !autoFullscreenEnabled || !reEnterFullscreenOnNavigation || ctrlHeld) return;
-      let attempts = 0;
-      const interval = setInterval(() => {
-        attempts++;
-        const video = document.querySelector("video");
-        if (video && !video.paused) {
-          clearInterval(interval);
-          document.dispatchEvent(
-            new KeyboardEvent("keydown", {
-              key: "f",
-              code: "KeyF",
-              keyCode: 70,
-              which: 70,
-              bubbles: true,
-            }),
-          );
-        }
-        if (attempts > 20) clearInterval(interval);
-      }, 250);
-    };
+    let lastPathname = location.pathname;
 
-    document.addEventListener("yt-navigate-finish", onYouTubeNav);
-
-    window.addEventListener("popstate", () => {
-      if (reEnterFullscreenOnNavigation) {
-        setTimeout(tryFullscreen, 500);
+    // YouTube SPA navigation (only fires on real page transitions)
+    document.addEventListener("yt-navigate-finish", () => {
+      if (location.pathname !== lastPathname) {
+        lastPathname = location.pathname;
+        onNavigate();
       }
     });
 
-    // Initial load: press F if video is already playing
-    if (isEnabled && autoFullscreenEnabled && !ctrlHeld) {
-      setTimeout(tryFullscreen, 500);
-    }
+    // Standard browser navigation (back/forward)
+    window.addEventListener("popstate", () => {
+      if (location.pathname !== lastPathname) {
+        lastPathname = location.pathname;
+        onNavigate();
+      }
+    });
 
     // --- Hide fullscreen exit instructions ---
 
@@ -95,6 +76,9 @@ export default defineContentScript({
       isEnabled = newValue.enabled;
       autoFullscreenEnabled = newValue.autoFullscreenEnabled;
       reEnterFullscreenOnNavigation = newValue.reEnterFullscreenOnNavigation;
+      if (!isEnabled) {
+        browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
+      }
     });
   },
 });
