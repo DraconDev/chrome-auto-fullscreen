@@ -14,52 +14,44 @@ export default defineContentScript({
     let reEnterFullscreenOnNavigation = (await store.getValue()).reEnterFullscreenOnNavigation;
     const TOP_EDGE_THRESHOLD = 1;
 
-    if (isEnabled && autoFullscreenEnabled) {
+    // --- Modifier key tracking ---
+    // Track modifier keys globally so we can check them even outside of events.
+    let modifierHeld = false;
+    document.addEventListener("keydown", (e) => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) modifierHeld = true;
+    });
+    document.addEventListener("keyup", () => {
+      modifierHeld = false;
+    });
+    window.addEventListener("blur", () => {
+      modifierHeld = false;
+    });
+
+    const hasModifier = (e?: MouseEvent): boolean => {
+      if (e) return !!(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey);
+      return modifierHeld;
+    };
+
+    // --- Auto-fullscreen on initial load ---
+    if (isEnabled && autoFullscreenEnabled && !modifierHeld) {
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     }
 
     // --- Navigation detection ---
+    // Only use events that fire on REAL navigations:
+    // - popstate: browser back/forward
+    // - yt-navigate-finish: YouTube SPA navigation (NOT fired on Ctrl+click)
+    // NO pushState/replaceState patches — they fire on Ctrl+click and cause false triggers.
 
     let lastPathname = location.pathname;
 
-    // Store the last mousedown event so pushState/replaceState patches
-    // can check if the user is holding modifier keys.
-    let lastMouseDown: MouseEvent | null = null;
-
     const onNavigate = () => {
+      if (modifierHeld) return;
       if (isEnabled && autoFullscreenEnabled && reEnterFullscreenOnNavigation) {
         browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       }
     };
 
-    const isModifiedClick = (): boolean => {
-      if (!lastMouseDown) return false;
-      return !!(
-        lastMouseDown.ctrlKey ||
-        lastMouseDown.metaKey ||
-        lastMouseDown.shiftKey ||
-        lastMouseDown.altKey
-      );
-    };
-
-    // Patch pushState/replaceState — check lastMouseDown for modifiers.
-    // YouTube calls pushState from its click handler, which runs AFTER
-    // mousedown. So lastMouseDown will have the modifier state.
-    const patchHistoryMethod = (method: "pushState" | "replaceState") => {
-      const original = history[method];
-      history[method] = function (...args: Parameters<typeof original>) {
-        original.apply(this, args);
-        if (isModifiedClick()) return;
-        if (location.pathname !== lastPathname) {
-          lastPathname = location.pathname;
-          onNavigate();
-        }
-      };
-    };
-    patchHistoryMethod("pushState");
-    patchHistoryMethod("replaceState");
-
-    // Standard browser events — these only fire on real navigations
     window.addEventListener("popstate", () => {
       if (location.pathname !== lastPathname) {
         lastPathname = location.pathname;
@@ -67,16 +59,12 @@ export default defineContentScript({
       }
     });
 
-    // YouTube-specific navigation events
-    const ytNavHandler = () => {
-      if (isModifiedClick()) return;
+    document.addEventListener("yt-navigate-finish", () => {
       if (location.pathname !== lastPathname) {
         lastPathname = location.pathname;
         onNavigate();
       }
-    };
-    document.addEventListener("yt-navigate-finish", ytNavHandler);
-    document.addEventListener("yt-page-data-updated", ytNavHandler);
+    });
 
     // --- Styles ---
 
@@ -174,7 +162,6 @@ export default defineContentScript({
     // --- Fullscreen helpers ---
 
     const findMainVideo = (): HTMLVideoElement | null => {
-      // Find the largest visible video on the page (the main player)
       const videos = document.querySelectorAll("video");
       let best: HTMLVideoElement | null = null;
       let bestArea = 0;
@@ -185,7 +172,6 @@ export default defineContentScript({
           bestArea = area;
         }
       }
-      // Also search inside shadow DOMs (YouTube uses custom elements)
       if (!best || bestArea < 10000) {
         const allElements = document.querySelectorAll("*");
         for (const el of allElements) {
@@ -232,10 +218,27 @@ export default defineContentScript({
     let startY = 0;
     const MOVEMENT_THRESHOLD = 2;
 
-    const handleMouseDown = (e: MouseEvent) => {
-      // Always record the last mousedown for navigation detection
-      lastMouseDown = e;
+    // Check if the click target is a video element or inside a video player container.
+    // This allows video clicks to bypass strictSafety.
+    const isVideoClick = (target: Element): boolean => {
+      let node: Element | null = target;
+      for (let i = 0; i < 8 && node; i++) {
+        if (node.tagName === "VIDEO") return true;
+        // YouTube player containers
+        if (node.tagName === "YTD-PLAYER" || node.tagName === "YTD-WATCH-FLEXY") return true;
+        // Generic video player containers
+        if (
+          node.classList.contains("video-player") ||
+          node.classList.contains("html5-video-player") ||
+          node.id === "movie_player"
+        )
+          return true;
+        node = node.parentElement;
+      }
+      return false;
+    };
 
+    const handleMouseDown = (e: MouseEvent) => {
       if (longPressTimer) {
         clearTimeout(longPressTimer);
         longPressTimer = null;
@@ -243,20 +246,21 @@ export default defineContentScript({
 
       if (!isEnabled) return;
 
+      // Block ALL actions when modifier keys are held
+      if (hasModifier(e)) return;
+
       const SCROLLBAR_THRESHOLD = 20;
       if (e.clientX >= window.innerWidth - SCROLLBAR_THRESHOLD) return;
 
       if (e.button !== 0) return;
 
-      // Block when modifier keys are held
-      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-
       const selection = window.getSelection();
       if (selection && selection.toString().length > 0) return;
 
       const target = e.target as Element;
+      const videoClick = isVideoClick(target);
 
-      if (strictSafety) {
+      if (strictSafety && !videoClick) {
         if (target) {
           const style = window.getComputedStyle(target);
           if (["pointer", "move", "help", "wait"].includes(style.cursor))
@@ -304,13 +308,7 @@ export default defineContentScript({
       }
     };
 
-    const handleMouseUp = (e: MouseEvent) => {
-      if (longPressTimer && (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey)) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-        cancelCharge();
-        return;
-      }
+    const handleMouseUp = () => {
       if (longPressTimer) {
         clearTimeout(longPressTimer);
         longPressTimer = null;
