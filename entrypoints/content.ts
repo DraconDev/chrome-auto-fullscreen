@@ -51,7 +51,6 @@ export default defineContentScript({
 
     // --- MMB/Ctrl+click: prevent fullscreen on current page ---
     // Simple boolean flag: set on modifier/MMB click, cleared on regular click.
-    let newTabIntent = false;
 
     document.addEventListener(
       "mousedown",
