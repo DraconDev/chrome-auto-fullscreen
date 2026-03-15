@@ -41,7 +41,6 @@ export default defineContentScript({
 
     // --- Track video clicks and new-tab intent ---
     let lastFullscreenedVideo: HTMLVideoElement | null = null;
-    let lastFullscreenedSrc = "";
     let physicalModifiersHeld = false;
 
     document.addEventListener(
