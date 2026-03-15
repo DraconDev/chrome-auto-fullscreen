@@ -50,7 +50,9 @@ export default defineContentScript({
     let lastFullscreenedVideo: HTMLVideoElement | null = null;
 
     // --- MMB/Ctrl+click: prevent fullscreen on current page ---
-    // Simple boolean flag: set on modifier/MMB click, cleared on regular click.
+    // Only set to true on modifier/MMB click. Never reset on regular click
+    // (was causing race: regular click within 300ms play delay cleared the flag).
+    // Reset only on URL change (SPA navigation).
 
     document.addEventListener(
       "mousedown",
@@ -63,13 +65,25 @@ export default defineContentScript({
         ) {
           newTabIntent = true;
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
-        } else {
-          newTabIntent = false;
-          browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
         }
+        // NOTE: Do NOT reset on regular click - causes race with play handler's 300ms delay
       },
       true,
     );
+
+    // Reset newTabIntent on URL change (SPA navigation or back/forward)
+    let lastUrl = location.href;
+    const checkUrlChange = () => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        newTabIntent = false;
+      }
+    };
+    window.addEventListener("popstate", checkUrlChange);
+    new MutationObserver(checkUrlChange).observe(document, {
+      subtree: true,
+      childList: true,
+    });
 
     // --- Send F key when a NEW video starts playing ---
     document.addEventListener(
