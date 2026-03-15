@@ -59,10 +59,22 @@ export default defineContentScript({
       true,
     );
 
+    // --- Track which video the user clicked ---
+    let lastFullscreenedVideo: HTMLVideoElement | null = null;
+
+    document.addEventListener(
+      "mousedown",
+      (e: MouseEvent) => {
+        const video = e.target;
+        if (video instanceof HTMLVideoElement) {
+          lastFullscreenedVideo = video;
+        }
+      },
+      true,
+    );
+
     // --- Send F key when a NEW video starts playing ---
     // Uses document-level play event (bubbles from <video>, works across Shadow DOM).
-
-    let lastFullscreenedSrc = "";
 
     document.addEventListener(
       "play",
@@ -78,9 +90,9 @@ export default defineContentScript({
         setTimeout(() => {
           const src = video.currentSrc || video.src;
           if (!src) return;
-          // Don't re-fullscreen the same video (e.g. pause → play)
-          if (src === lastFullscreenedSrc) return;
-          lastFullscreenedSrc = src;
+          // Don't re-fullscreen the same video element (e.g. pause → play on same video)
+          if (video === lastFullscreenedVideo) return;
+          lastFullscreenedVideo = video;
 
           browser.runtime.sendMessage({ action: "sendFKey" });
         }, 300);
