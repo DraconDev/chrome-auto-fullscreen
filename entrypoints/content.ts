@@ -7,25 +7,32 @@ export default defineContentScript({
     let isEnabled = (await store.getValue()).enabled;
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
 
-    const initialPageUrl = location.href;
+    // --- New tab detection ---
+    // New tab: query background for modifier state set by the originating page
+    let newTabIntent = false;
 
-    // --- Detect new-tab intent ---
-    // Current page: set on mousedown (Ctrl+click or MMB)
-    // New tab: read from background on load (with retries for timing)
-
-    let lastNewTabVideo: HTMLVideoElement | null = null;
-
-    // New tab: query background for modifier state
     for (let i = 0; i < 5; i++) {
       const resp = await browser.runtime.sendMessage({
         action: "getModifierState",
       });
       if (resp?.ctrlHeld) {
-        lastNewTabVideo = {} as HTMLVideoElement; // sentinel: skip first play
+        newTabIntent = true;
         break;
       }
       await new Promise((r) => setTimeout(r, 100));
     }
+
+    // Fallback: check if modifier keys are physically held right now
+    const checkModifiers = (e: KeyboardEvent) => {
+      if (
+        e.getModifierState("Control") ||
+        e.getModifierState("Meta") ||
+        e.getModifierState("Alt")
+      ) {
+        newTabIntent = true;
+      }
+    };
+    document.addEventListener("keydown", checkModifiers, true);
 
     // Report modifier state to background (for new tabs to read)
     document.addEventListener("keydown", (e) => {
@@ -39,29 +46,20 @@ export default defineContentScript({
       }
     });
 
-    // --- Track video clicks and new-tab intent ---
+    // --- Track last fullscreened video element ---
     let lastFullscreenedVideo: HTMLVideoElement | null = null;
-    let physicalModifiersHeld = false;
 
+    // --- MMB/Ctrl+click: mark this page to never fullscreen ---
     document.addEventListener(
       "mousedown",
       (e: MouseEvent) => {
-        // Walk up the DOM to find a video element
-        let target = e.target as HTMLElement | null;
-        while (target && !(target instanceof HTMLVideoElement)) {
-          target = target.parentElement;
-        }
-        const video =
-          target instanceof HTMLVideoElement ? target : null;
-
-        // If MMB or Ctrl+click, remember the video to skip fullscreen on this page
         if (
           e.ctrlKey ||
           e.metaKey ||
           e.altKey ||
           e.button === 1
         ) {
-          lastNewTabVideo = video;
+          newTabIntent = true;
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
         } else {
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
@@ -71,12 +69,11 @@ export default defineContentScript({
     );
 
     // --- Send F key when a NEW video starts playing ---
-    // Uses document-level play event (bubbles from <video>, works across Shadow DOM).
-
     document.addEventListener(
       "play",
       (e) => {
         if (!isEnabled || !autoFullscreenEnabled) return;
+        if (newTabIntent) return;
 
         const video = e.target;
         if (!(video instanceof HTMLVideoElement)) return;
@@ -87,25 +84,10 @@ export default defineContentScript({
           const src = video.currentSrc || video.src;
           if (!src) return;
 
-          // SAFETY: Skip if this video was opened via MMB/Ctrl+click
-          if (video === lastNewTabVideo) return;
+          // Same video element = pause/play on existing video, skip
+          if (video === lastFullscreenedVideo) return;
 
-          // SAFETY: Skip if modifier keys are physically held right now
-          // (catches race where new tab loads while Ctrl is still held)
-          if (physicalModifiersHeld) return;
-
-          // Detect new video:
-          // - Element changed: different video element = new video, fullscreen
-          // - URL changed: page navigated = new video, fullscreen
-          // Same element AND same URL = pause/play on existing video, skip
-          // Note: We DON'T compare src because it may not be set on initial load,
-          // causing false fullscreen triggers when user pauses/plays the same video.
-          const elementChanged = video !== lastFullscreenedVideo;
-          const urlChanged = location.href !== initialPageUrl;
-
-          if (!elementChanged && !urlChanged) return;
-
-          // New video → fullscreen
+          // Different video element = new video, fullscreen
           lastFullscreenedVideo = video;
 
           browser.runtime.sendMessage({ action: "sendFKey" });
@@ -114,38 +96,8 @@ export default defineContentScript({
       true,
     );
 
-    // Track physical modifier key state
-    document.addEventListener(
-      "keydown",
-      (e) => {
-        if (
-          e.getModifierState("Control") ||
-          e.getModifierState("Meta") ||
-          e.getModifierState("Alt")
-        ) {
-          physicalModifiersHeld = true;
-        }
-      },
-      true,
-    );
-    document.addEventListener(
-      "keyup",
-      (e) => {
-        if (
-          !e.getModifierState("Control") &&
-          !e.getModifierState("Meta") &&
-          !e.getModifierState("Alt")
-        ) {
-          physicalModifiersHeld = false;
-        }
-      },
-      true,
-    );
-
-    // --- Auto-fullscreen on initial load (window-level) ---
-
-    if (isEnabled && autoFullscreenEnabled && !lastNewTabVideo) {
-      // CRITICAL: Initialize tracking so pause→play on same video doesn't re-fullscreen
+    // --- Auto-fullscreen on initial load ---
+    if (isEnabled && autoFullscreenEnabled && !newTabIntent) {
       const mainVideo = document.querySelector("video");
       if (mainVideo) {
         lastFullscreenedVideo = mainVideo;
@@ -154,7 +106,6 @@ export default defineContentScript({
     }
 
     // --- Hide fullscreen exit instructions ---
-
     const style = document.createElement("style");
     style.textContent = `
       .Chrome-Full-Screen-Exit-Instruction { display: none !important; }
@@ -163,7 +114,6 @@ export default defineContentScript({
     document.head.appendChild(style);
 
     // --- Settings watcher ---
-
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
       autoFullscreenEnabled = newValue.autoFullscreenEnabled;
