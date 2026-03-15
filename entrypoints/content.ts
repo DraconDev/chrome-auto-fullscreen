@@ -149,7 +149,6 @@ export default defineContentScript({
       const mainVideo = document.querySelector("video");
       if (mainVideo) {
         lastFullscreenedVideo = mainVideo;
-        lastFullscreenedSrc = mainVideo.currentSrc || mainVideo.src || "";
       }
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     }
