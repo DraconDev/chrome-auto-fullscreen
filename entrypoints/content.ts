@@ -25,13 +25,22 @@ export default defineContentScript({
       await new Promise((r) => setTimeout(r, 100));
     }
 
-    // Current page: also check if Ctrl is physically held right now
-    // (covers race where keydown fires before content script loads)
-    document.addEventListener("keydown", (e) => {
-      if (e.getModifierState("Control") || e.getModifierState("Meta")) {
-        newTabIntent = true;
-      }
-    });
+    // Check if modifier keys are physically held RIGHT NOW
+    // (covers race where keydown fires before content script loads, or
+    // where new tab loads while modifier is still held)
+    document.addEventListener(
+      "keydown",
+      (e) => {
+        if (
+          e.getModifierState("Control") ||
+          e.getModifierState("Meta") ||
+          e.getModifierState("Alt")
+        ) {
+          newTabIntent = true;
+        }
+      },
+      true,
+    );
 
     // Report modifier state to background (for new tabs to read)
     document.addEventListener("keydown", (e) => {
