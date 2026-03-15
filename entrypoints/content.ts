@@ -95,9 +95,16 @@ export default defineContentScript({
           // (catches race where new tab loads while Ctrl is still held)
           if (physicalModifiersHeld) return;
 
-          // Detect new video: element changed, src changed, or URL changed
+          // Detect new video:
+          // - Element changed: different video element (new DOM node)
+          // - Src changed: same element but different video content (SPA navigation)
+          // - URL changed: page navigated
+          // Skip only if element AND src are both unchanged (pause/play on same video).
+          // Note: lastFullscreenedSrc is "" on first play after load, so srcChanged
+          // will be true on first play - this is correct (first play = new video).
           const elementChanged = video !== lastFullscreenedVideo;
-          const srcChanged = src !== lastFullscreenedSrc;
+          const srcChanged =
+            lastFullscreenedSrc !== "" && src !== lastFullscreenedSrc;
           const urlChanged = location.href !== initialPageUrl;
 
           // Same element AND same src AND same URL → pause/play on existing video, skip
