@@ -107,7 +107,6 @@ export default defineContentScript({
 
           // New video → fullscreen
           lastFullscreenedVideo = video;
-          lastFullscreenedSrc = src;
 
           browser.runtime.sendMessage({ action: "sendFKey" });
         }, 300);
