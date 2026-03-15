@@ -54,11 +54,16 @@ export default defineContentScript({
       }
     });
 
-    // On mousedown: if Ctrl/MMB, this page should NOT fullscreen anything
+    // On mousedown: if Ctrl/Meta/Alt/MMB, this page should NOT fullscreen anything
     document.addEventListener(
       "mousedown",
       (e: MouseEvent) => {
-        if (e.ctrlKey || e.metaKey || e.button === 1) {
+        if (
+          e.ctrlKey ||
+          e.metaKey ||
+          e.altKey ||
+          e.button === 1
+        ) {
           newTabIntent = true;
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
         } else {
