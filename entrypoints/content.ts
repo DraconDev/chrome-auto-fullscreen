@@ -7,7 +7,8 @@ export default defineContentScript({
     let isEnabled = (await store.getValue()).enabled;
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
 
-    // --- New tab detection ---
+    // --- New tab detection (for initial load) ---
+    // New tabs query the background for modifier state set by the originating page
     let newTabIntent = false;
 
     for (let i = 0; i < 5; i++) {
@@ -22,7 +23,7 @@ export default defineContentScript({
     }
 
     // Fallback: check if modifier keys are physically held right now
-    const checkModifiers = (e: KeyboardEvent) => {
+    const onKeydown = (e: KeyboardEvent) => {
       if (
         e.getModifierState("Control") ||
         e.getModifierState("Meta") ||
@@ -31,7 +32,7 @@ export default defineContentScript({
         newTabIntent = true;
       }
     };
-    document.addEventListener("keydown", checkModifiers, true);
+    document.addEventListener("keydown", onKeydown, true);
 
     // Report modifier state to background (for new tabs to read)
     document.addEventListener("keydown", (e) => {
@@ -45,30 +46,14 @@ export default defineContentScript({
       }
     });
 
-    // BUG FIX: Reset newTabIntent on URL change (SPA navigation)
-    // Without this, a single MMB/Ctrl+click disables fullscreen for the
-    // entire page session, even after the user navigates to a new video.
-    let lastUrl = location.href;
-    const urlObserver = new MutationObserver(() => {
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        newTabIntent = false;
-      }
-    });
-    urlObserver.observe(document, { subtree: true, childList: true });
-
-    // Also check on popstate (back/forward navigation)
-    window.addEventListener("popstate", () => {
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        newTabIntent = false;
-      }
-    });
-
     // --- Track last fullscreened video element ---
     let lastFullscreenedVideo: HTMLVideoElement | null = null;
 
-    // --- MMB/Ctrl+click: mark this page to never fullscreen ---
+    // --- MMB/Ctrl+click: track which specific video to skip ---
+    // Using a video-specific reference instead of a global flag ensures
+    // only the clicked video is affected, not all videos on the page.
+    let skipFullscreenForVideo: HTMLVideoElement | null = null;
+
     document.addEventListener(
       "mousedown",
       (e: MouseEvent) => {
@@ -78,9 +63,17 @@ export default defineContentScript({
           e.altKey ||
           e.button === 1
         ) {
-          newTabIntent = true;
+          // Find the video element under the click
+          let target = e.target as HTMLElement | null;
+          while (target && !(target instanceof HTMLVideoElement)) {
+            target = target.parentElement;
+          }
+          skipFullscreenForVideo =
+            target instanceof HTMLVideoElement ? target : ({} as HTMLVideoElement);
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
         } else {
+          // Regular click - clear the skip
+          skipFullscreenForVideo = null;
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
         }
       },
@@ -92,7 +85,6 @@ export default defineContentScript({
       "play",
       (e) => {
         if (!isEnabled || !autoFullscreenEnabled) return;
-        if (newTabIntent) return;
 
         const video = e.target;
         if (!(video instanceof HTMLVideoElement)) return;
@@ -103,11 +95,17 @@ export default defineContentScript({
           const src = video.currentSrc || video.src;
           if (!src) return;
 
+          // Skip if this specific video was MMB/Ctrl+clicked
+          if (video === skipFullscreenForVideo) return;
+
+          // Skip if modifier keys are physically held right now
+          // (catches race where new tab loads while Ctrl is still held)
+          if (newTabIntent) return;
+
           // Same video element = pause/play on existing video, skip
           if (video === lastFullscreenedVideo) return;
 
           // Only ENTER fullscreen, never EXIT
-          // Sending F when already fullscreen toggles it off, causing enter/exit spam
           if (document.fullscreenElement) return;
 
           // Different video element = new video, fullscreen
@@ -142,7 +140,6 @@ export default defineContentScript({
       isEnabled = newValue.enabled;
       autoFullscreenEnabled = newValue.autoFullscreenEnabled;
       if (!isEnabled) {
-        // Debounce to avoid rapid toggles from multiple setting changes
         if (settingsTimeout) clearTimeout(settingsTimeout);
         settingsTimeout = setTimeout(() => {
           browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
