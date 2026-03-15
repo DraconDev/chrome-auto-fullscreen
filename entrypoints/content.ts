@@ -86,11 +86,7 @@ export default defineContentScript({
           const src = video.currentSrc || video.src;
           if (!src) return;
 
-          // Skip if this specific video was MMB/Ctrl+clicked
-          if (video === skipFullscreenForVideo) return;
-
-          // Skip if modifier keys are physically held right now
-          // (catches race where new tab loads while Ctrl is still held)
+          // Skip if MMB/Ctrl+click opened a new tab
           if (newTabIntent) return;
 
           // Same video element = pause/play on existing video, skip
