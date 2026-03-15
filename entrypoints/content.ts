@@ -49,10 +49,9 @@ export default defineContentScript({
     // --- Track last fullscreened video element ---
     let lastFullscreenedVideo: HTMLVideoElement | null = null;
 
-    // --- MMB/Ctrl+click: track which specific video to skip ---
-    // Using a video-specific reference instead of a global flag ensures
-    // only the clicked video is affected, not all videos on the page.
-    let skipFullscreenForVideo: HTMLVideoElement | null = null;
+    // --- MMB/Ctrl+click: prevent fullscreen on current page ---
+    // Simple boolean flag: set on modifier/MMB click, cleared on regular click.
+    let newTabIntent = false;
 
     document.addEventListener(
       "mousedown",
@@ -63,17 +62,10 @@ export default defineContentScript({
           e.altKey ||
           e.button === 1
         ) {
-          // Find the video element under the click
-          let target = e.target as HTMLElement | null;
-          while (target && !(target instanceof HTMLVideoElement)) {
-            target = target.parentElement;
-          }
-          skipFullscreenForVideo =
-            target instanceof HTMLVideoElement ? target : ({} as HTMLVideoElement);
+          newTabIntent = true;
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
         } else {
-          // Regular click - clear the skip
-          skipFullscreenForVideo = null;
+          newTabIntent = false;
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
         }
       },
