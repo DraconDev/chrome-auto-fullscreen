@@ -41,6 +41,7 @@ export default defineContentScript({
 
     // --- Track video clicks and new-tab intent ---
     let lastFullscreenedSrc = "";
+    let physicalModifiersHeld = false;
 
     document.addEventListener(
       "mousedown",
@@ -111,7 +112,6 @@ export default defineContentScript({
     );
 
     // Track physical modifier key state
-    let physicalModifiersHeld = false;
     document.addEventListener(
       "keydown",
       (e) => {
