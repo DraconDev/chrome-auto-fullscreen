@@ -147,6 +147,7 @@ export default defineContentScript({
       // CRITICAL: Initialize tracking so pause→play on same video doesn't re-fullscreen
       const mainVideo = document.querySelector("video");
       if (mainVideo) {
+        lastFullscreenedVideo = mainVideo;
         lastFullscreenedSrc = mainVideo.currentSrc || mainVideo.src || "";
       }
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
