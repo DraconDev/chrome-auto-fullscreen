@@ -75,13 +75,18 @@ export default defineContentScript({
 
     // --- Track which video the user clicked ---
     let lastFullscreenedVideo: HTMLVideoElement | null = null;
+    let lastFullscreenedSrc = "";
 
     document.addEventListener(
       "mousedown",
       (e: MouseEvent) => {
-        const video = e.target;
-        if (video instanceof HTMLVideoElement) {
-          lastFullscreenedVideo = video;
+        // Walk up the DOM to find a video element (click might be on a child/control)
+        let target = e.target as HTMLElement | null;
+        while (target && !(target instanceof HTMLVideoElement)) {
+          target = target.parentElement;
+        }
+        if (target instanceof HTMLVideoElement) {
+          lastFullscreenedVideo = target;
         }
       },
       true,
@@ -104,9 +109,18 @@ export default defineContentScript({
         setTimeout(() => {
           const src = video.currentSrc || video.src;
           if (!src) return;
-          // Don't re-fullscreen the same video element (e.g. pause → play on same video)
-          if (video === lastFullscreenedVideo) return;
+
+          // On SPA sites (like Odysee), the same video element might be reused
+          // with a new src. Track both element and src to detect new videos.
+          const sameElement = video === lastFullscreenedVideo;
+          const sameSrc = src === lastFullscreenedSrc;
+
+          // Same element AND same src → pause/play on same video, skip
+          if (sameElement && sameSrc) return;
+
+          // Update tracking and fullscreen
           lastFullscreenedVideo = video;
+          lastFullscreenedSrc = src;
 
           browser.runtime.sendMessage({ action: "sendFKey" });
         }, 300);
