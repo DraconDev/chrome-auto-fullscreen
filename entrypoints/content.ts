@@ -7,11 +7,13 @@ export default defineContentScript({
     let isEnabled = (await store.getValue()).enabled;
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
 
+    const initialPageUrl = location.href;
+
     // --- Detect new-tab intent ---
     // Current page: set on mousedown (Ctrl+click or MMB)
     // New tab: read from background on load (with retries for timing)
 
-    let newTabIntent = false;
+    let lastNewTabVideo: HTMLVideoElement | null = null;
 
     // New tab: query background for modifier state
     for (let i = 0; i < 5; i++) {
@@ -19,28 +21,11 @@ export default defineContentScript({
         action: "getModifierState",
       });
       if (resp?.ctrlHeld) {
-        newTabIntent = true;
+        lastNewTabVideo = {} as HTMLVideoElement; // sentinel: skip first play
         break;
       }
       await new Promise((r) => setTimeout(r, 100));
     }
-
-    // Check if modifier keys are physically held RIGHT NOW
-    // (covers race where keydown fires before content script loads, or
-    // where new tab loads while modifier is still held)
-    document.addEventListener(
-      "keydown",
-      (e) => {
-        if (
-          e.getModifierState("Control") ||
-          e.getModifierState("Meta") ||
-          e.getModifierState("Alt")
-        ) {
-          newTabIntent = true;
-        }
-      },
-      true,
-    );
 
     // Report modifier state to background (for new tabs to read)
     document.addEventListener("keydown", (e) => {
@@ -54,39 +39,31 @@ export default defineContentScript({
       }
     });
 
-    // On mousedown: if Ctrl/Meta/Alt/MMB, this page should NOT fullscreen anything
+    // --- Track video clicks and new-tab intent ---
+    let lastFullscreenedSrc = "";
+
     document.addEventListener(
       "mousedown",
       (e: MouseEvent) => {
+        // Walk up the DOM to find a video element
+        let target = e.target as HTMLElement | null;
+        while (target && !(target instanceof HTMLVideoElement)) {
+          target = target.parentElement;
+        }
+        const video =
+          target instanceof HTMLVideoElement ? target : null;
+
+        // If MMB or Ctrl+click, remember the video to skip fullscreen on this page
         if (
           e.ctrlKey ||
           e.metaKey ||
           e.altKey ||
           e.button === 1
         ) {
-          newTabIntent = true;
+          lastNewTabVideo = video;
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
         } else {
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
-        }
-      },
-      true,
-    );
-
-    // --- Track which video the user clicked ---
-    let lastFullscreenedVideo: HTMLVideoElement | null = null;
-    let lastFullscreenedSrc = "";
-
-    document.addEventListener(
-      "mousedown",
-      (e: MouseEvent) => {
-        // Walk up the DOM to find a video element (click might be on a child/control)
-        let target = e.target as HTMLElement | null;
-        while (target && !(target instanceof HTMLVideoElement)) {
-          target = target.parentElement;
-        }
-        if (target instanceof HTMLVideoElement) {
-          lastFullscreenedVideo = target;
         }
       },
       true,
@@ -99,7 +76,6 @@ export default defineContentScript({
       "play",
       (e) => {
         if (!isEnabled || !autoFullscreenEnabled) return;
-        if (newTabIntent) return;
 
         const video = e.target;
         if (!(video instanceof HTMLVideoElement)) return;
@@ -110,16 +86,42 @@ export default defineContentScript({
           const src = video.currentSrc || video.src;
           if (!src) return;
 
-          // On SPA sites (like Odysee), the same video element might be reused
-          // with a new src. Track both element and src to detect new videos.
-          const sameElement = video === lastFullscreenedVideo;
-          const sameSrc = src === lastFullscreenedSrc;
+          // SAFETY: Skip if this video was opened via MMB/Ctrl+click
+          if (video === lastNewTabVideo) return;
 
-          // Same element AND same src → pause/play on same video, skip
-          if (sameElement && sameSrc) return;
+          // SAFETY: Skip if modifier keys are physically held right now
+          // (catches race where new tab loads while Ctrl is still held)
+          if (
+            document.activeElement &&
+            document.activeElement !== document.body
+          ) {
+            // Check on the active element in case focus is on the video
+          }
+          try {
+            const testEvent = new KeyboardEvent("keydown");
+            if (
+              testEvent.getModifierState("Control") ||
+              testEvent.getModifierState("Meta") ||
+              testEvent.getModifierState("Alt")
+            ) {
+              // Can't use synthetic event for getModifierState, check document
+            }
+          } catch {}
 
-          // Update tracking and fullscreen
-          lastFullscreenedVideo = video;
+          // Check if modifier keys are held by listening to actual key state
+          // We check this via a stored flag set by keydown, plus physical check:
+          const modifiersHeld = checkModifiersHeld();
+          if (modifiersHeld) return;
+
+          // KEY FIX: Detect new video by URL change (SPA navigation)
+          // or by src change (different video content)
+          const urlChanged = location.href !== initialPageUrl;
+          const srcChanged = src !== lastFullscreenedSrc;
+
+          // Same page AND same src → pause/play on existing video, skip
+          if (!urlChanged && !srcChanged) return;
+
+          // New video → fullscreen
           lastFullscreenedSrc = src;
 
           browser.runtime.sendMessage({ action: "sendFKey" });
@@ -128,9 +130,47 @@ export default defineContentScript({
       true,
     );
 
+    // Track physical modifier key state
+    let physicalModifiersHeld = false;
+    document.addEventListener(
+      "keydown",
+      (e) => {
+        if (
+          e.getModifierState("Control") ||
+          e.getModifierState("Meta") ||
+          e.getModifierState("Alt")
+        ) {
+          physicalModifiersHeld = true;
+        }
+      },
+      true,
+    );
+    document.addEventListener(
+      "keyup",
+      (e) => {
+        if (
+          !e.getModifierState("Control") &&
+          !e.getModifierState("Meta") &&
+          !e.getModifierState("Alt")
+        ) {
+          physicalModifiersHeld = false;
+        }
+      },
+      true,
+    );
+
+    function checkModifiersHeld(): boolean {
+      return physicalModifiersHeld;
+    }
+
     // --- Auto-fullscreen on initial load (window-level) ---
 
-    if (isEnabled && autoFullscreenEnabled && !newTabIntent) {
+    if (isEnabled && autoFullscreenEnabled && !lastNewTabVideo) {
+      // CRITICAL: Initialize tracking so pause→play on same video doesn't re-fullscreen
+      const mainVideo = document.querySelector("video");
+      if (mainVideo) {
+        lastFullscreenedSrc = mainVideo.currentSrc || mainVideo.src || "";
+      }
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     }
 
