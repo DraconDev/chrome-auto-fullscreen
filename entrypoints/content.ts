@@ -87,6 +87,10 @@ export default defineContentScript({
           // Same video element = pause/play on existing video, skip
           if (video === lastFullscreenedVideo) return;
 
+          // CRITICAL: Only ENTER fullscreen, never EXIT
+          // Sending F when already fullscreen toggles it off, causing enter/exit spam
+          if (document.fullscreenElement) return;
+
           // Different video element = new video, fullscreen
           lastFullscreenedVideo = video;
 
