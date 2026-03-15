@@ -40,6 +40,7 @@ export default defineContentScript({
     });
 
     // --- Track video clicks and new-tab intent ---
+    let lastFullscreenedVideo: HTMLVideoElement | null = null;
     let lastFullscreenedSrc = "";
     let physicalModifiersHeld = false;
 
@@ -94,15 +95,16 @@ export default defineContentScript({
           // (catches race where new tab loads while Ctrl is still held)
           if (physicalModifiersHeld) return;
 
-          // KEY FIX: Detect new video by URL change (SPA navigation)
-          // or by src change (different video content)
-          const urlChanged = location.href !== initialPageUrl;
+          // Detect new video: element changed, src changed, or URL changed
+          const elementChanged = video !== lastFullscreenedVideo;
           const srcChanged = src !== lastFullscreenedSrc;
+          const urlChanged = location.href !== initialPageUrl;
 
-          // Same page AND same src → pause/play on existing video, skip
-          if (!urlChanged && !srcChanged) return;
+          // Same element AND same src AND same URL → pause/play on existing video, skip
+          if (!elementChanged && !srcChanged && !urlChanged) return;
 
           // New video → fullscreen
+          lastFullscreenedVideo = video;
           lastFullscreenedSrc = src;
 
           browser.runtime.sendMessage({ action: "sendFKey" });
