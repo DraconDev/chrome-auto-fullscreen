@@ -8,7 +8,6 @@ export default defineContentScript({
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
 
     // --- New tab detection ---
-    // New tab: query background for modifier state set by the originating page
     let newTabIntent = false;
 
     for (let i = 0; i < 5; i++) {
@@ -43,6 +42,26 @@ export default defineContentScript({
     document.addEventListener("keyup", (e) => {
       if (!e.ctrlKey && !e.metaKey) {
         browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
+      }
+    });
+
+    // BUG FIX: Reset newTabIntent on URL change (SPA navigation)
+    // Without this, a single MMB/Ctrl+click disables fullscreen for the
+    // entire page session, even after the user navigates to a new video.
+    let lastUrl = location.href;
+    const urlObserver = new MutationObserver(() => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        newTabIntent = false;
+      }
+    });
+    urlObserver.observe(document, { subtree: true, childList: true });
+
+    // Also check on popstate (back/forward navigation)
+    window.addEventListener("popstate", () => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        newTabIntent = false;
       }
     });
 
@@ -87,7 +106,7 @@ export default defineContentScript({
           // Same video element = pause/play on existing video, skip
           if (video === lastFullscreenedVideo) return;
 
-          // CRITICAL: Only ENTER fullscreen, never EXIT
+          // Only ENTER fullscreen, never EXIT
           // Sending F when already fullscreen toggles it off, causing enter/exit spam
           if (document.fullscreenElement) return;
 
@@ -117,12 +136,17 @@ export default defineContentScript({
     `;
     document.head.appendChild(style);
 
-    // --- Settings watcher ---
+    // --- Settings watcher (debounced) ---
+    let settingsTimeout: ReturnType<typeof setTimeout> | null = null;
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
       autoFullscreenEnabled = newValue.autoFullscreenEnabled;
       if (!isEnabled) {
-        browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
+        // Debounce to avoid rapid toggles from multiple setting changes
+        if (settingsTimeout) clearTimeout(settingsTimeout);
+        settingsTimeout = setTimeout(() => {
+          browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
+        }, 100);
       }
     });
   },

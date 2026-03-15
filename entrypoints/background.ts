@@ -3,42 +3,63 @@ import { defineBackground } from "wxt/sandbox";
 export default defineBackground({
   main() {
     let ctrlHeld = false;
+    // Don't reset immediately - use timeout to handle multi-tab race
+    let ctrlResetTimeout: ReturnType<typeof setTimeout> | null = null;
 
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === "setModifiers") {
         ctrlHeld = message.ctrl || message.meta || false;
-        return;
+        return false;
       }
 
       if (message.action === "getModifierState") {
         sendResponse({ ctrlHeld });
-        ctrlHeld = false;
+        // BUG FIX: Delay reset to handle multiple tabs opening simultaneously
+        // Without this, only the first tab to query gets the modifier state
+        if (ctrlResetTimeout) clearTimeout(ctrlResetTimeout);
+        ctrlResetTimeout = setTimeout(() => {
+          ctrlHeld = false;
+        }, 500);
         return true;
       }
 
       if (message.action === "sendFKey") {
         const tabId = sender.tab?.id;
-        if (!tabId) return;
+        if (!tabId) return false;
 
+        // BUG FIX: Wait for debugger attach to complete before sending keys
         chrome.debugger.attach({ tabId }, "1.3", () => {
           if (chrome.runtime.lastError) return;
 
-          chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", {
-            type: "keyDown",
-            key: "f",
-            code: "KeyF",
-            windowsVirtualKeyCode: 70,
-            nativeVirtualKeyCode: 70,
-          });
-          chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent", {
-            type: "keyUp",
-            key: "f",
-            code: "KeyF",
-            windowsVirtualKeyCode: 70,
-            nativeVirtualKeyCode: 70,
-          });
-          setTimeout(() => chrome.debugger.detach({ tabId }), 500);
+          chrome.debugger.sendCommand(
+            { tabId },
+            "Input.dispatchKeyEvent",
+            {
+              type: "keyDown",
+              key: "f",
+              code: "KeyF",
+              windowsVirtualKeyCode: 70,
+              nativeVirtualKeyCode: 70,
+            },
+            () => {
+              chrome.debugger.sendCommand(
+                { tabId },
+                "Input.dispatchKeyEvent",
+                {
+                  type: "keyUp",
+                  key: "f",
+                  code: "KeyF",
+                  windowsVirtualKeyCode: 70,
+                  nativeVirtualKeyCode: 70,
+                },
+                () => {
+                  setTimeout(() => chrome.debugger.detach({ tabId }), 500);
+                },
+              );
+            },
+          );
         });
+        return false;
       }
 
       if (message.action === "toggleWindowFullscreen") {
@@ -50,6 +71,7 @@ export default defineBackground({
             chrome.windows.update(win.id, { state: "fullscreen" });
           }
         });
+        return false;
       }
 
       if (message.action === "setWindowFullscreen") {
@@ -59,6 +81,7 @@ export default defineBackground({
             chrome.windows.update(win.id, { state: "fullscreen" });
           }
         });
+        return false;
       }
 
       if (message.action === "exitWindowFullscreen") {
@@ -68,7 +91,10 @@ export default defineBackground({
             chrome.windows.update(win.id, { state: "normal" });
           }
         });
+        return false;
       }
+
+      return false;
     });
   },
 });
