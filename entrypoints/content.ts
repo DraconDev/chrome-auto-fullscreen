@@ -91,27 +91,7 @@ export default defineContentScript({
 
           // SAFETY: Skip if modifier keys are physically held right now
           // (catches race where new tab loads while Ctrl is still held)
-          if (
-            document.activeElement &&
-            document.activeElement !== document.body
-          ) {
-            // Check on the active element in case focus is on the video
-          }
-          try {
-            const testEvent = new KeyboardEvent("keydown");
-            if (
-              testEvent.getModifierState("Control") ||
-              testEvent.getModifierState("Meta") ||
-              testEvent.getModifierState("Alt")
-            ) {
-              // Can't use synthetic event for getModifierState, check document
-            }
-          } catch {}
-
-          // Check if modifier keys are held by listening to actual key state
-          // We check this via a stored flag set by keydown, plus physical check:
-          const modifiersHeld = checkModifiersHeld();
-          if (modifiersHeld) return;
+          if (physicalModifiersHeld) return;
 
           // KEY FIX: Detect new video by URL change (SPA navigation)
           // or by src change (different video content)
@@ -158,10 +138,6 @@ export default defineContentScript({
       },
       true,
     );
-
-    function checkModifiersHeld(): boolean {
-      return physicalModifiersHeld;
-    }
 
     // --- Auto-fullscreen on initial load (window-level) ---
 
