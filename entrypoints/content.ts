@@ -159,8 +159,8 @@ export default defineContentScript({
     );
 
     // --- Auto-fullscreen on initial load ---
-    // Runs immediately on page load. The mousedown handler fires before this
-    // code (synchronous execution), so newTabIntent is reliable here.
+    // Runs AFTER all async operations complete, so newTabIntent is fully
+    // initialized (background check + storage check + physical key check).
     if (isEnabled && autoFullscreenEnabled && !newTabIntent) {
       const mainVideo = document.querySelector("video");
       if (mainVideo) {
