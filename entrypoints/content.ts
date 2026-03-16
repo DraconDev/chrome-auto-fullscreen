@@ -88,10 +88,27 @@ export default defineContentScript({
     });
 
     // --- Top edge exit ---
-    const TOP_EDGE_THRESHOLD = 10;
+    const TOP_EDGE_THRESHOLD = 20;
+    // Debug indicator at top of screen
+    const debugIndicator = document.createElement("div");
+    debugIndicator.style.cssText = `
+      position:fixed;top:0;left:0;right:0;height:${TOP_EDGE_THRESHOLD}px;
+      background:rgba(255,0,0,0.3);z-index:2147483646;pointer-events:none;
+      display:none;font:12px monospace;color:white;padding:2px 5px;
+    `;
+    debugIndicator.textContent = "AF: TOP EDGE ZONE";
+    document.body.appendChild(debugIndicator);
+
     document.addEventListener(
       "mousemove",
       (e: MouseEvent) => {
+        if (e.clientY <= TOP_EDGE_THRESHOLD + 5) {
+          debugIndicator.style.display = "block";
+          debugIndicator.textContent = `AF: y=${e.clientY} enabled=${isEnabled} topEdge=${topEdgeExitEnabled} oneWay=${oneWayFullscreen}`;
+        } else {
+          debugIndicator.style.display = "none";
+        }
+
         if (!topEdgeExitEnabled) return;
         if (!isEnabled) return;
         if (e.clientY <= TOP_EDGE_THRESHOLD) {
