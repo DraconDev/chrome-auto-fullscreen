@@ -95,50 +95,19 @@ export default defineContentScript({
 
         log("charge start, delay=", longPressDelay, "fullscreen=", !!document.fullscreenElement);
 
-        // requestFullscreen() MUST be called within the user gesture (mousedown).
-        // setTimeout breaks the gesture, so for charge mode we use window fullscreen.
-        // Try video element first (better experience), fall back to window fullscreen.
-        const findVideo = (): HTMLVideoElement | null => {
-          const v = document.querySelector("video");
-          if (v && v.offsetWidth >= 200 && v.offsetHeight >= 150) return v;
-          return null;
-        };
-
         if (longPressDelay === 0) {
-          // Instant mode - gesture is alive, requestFullscreen works directly
+          // Instant mode
           chargeCompleted = true;
-          const video = findVideo();
-          if (video && !document.fullscreenElement) {
-            log("instant: calling requestFullscreen() on video");
-            video.requestFullscreen()
-              .then(() => log("requestFullscreen SUCCESS"))
-              .catch((err) => {
-                log("requestFullscreen failed, trying window fullscreen:", err);
-                browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-              });
-          } else {
-            log("instant: no video, using window fullscreen");
-            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-          }
+          log("instant: window fullscreen");
+          browser.runtime.sendMessage({ action: "setWindowFullscreen" });
         } else {
-          // Charge mode - user holds mouse, wait for delay then fullscreen
+          // Charge mode - hold for delay then fullscreen
           log("charge: starting timer");
           chargeTimer = setTimeout(() => {
             chargeTimer = null;
             chargeCompleted = true;
-            log("charge: timer fired, fullscreening");
-            // Try video fullscreen first (better), fall back to window
-            const video = findVideo();
-            if (video && !document.fullscreenElement) {
-              video.requestFullscreen()
-                .then(() => log("charge requestFullscreen SUCCESS"))
-                .catch(() => {
-                  log("charge requestFullscreen failed, window fullscreen");
-                  browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-                });
-            } else {
-              browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-            }
+            log("charge: timer fired, window fullscreen");
+            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
           }, longPressDelay);
         }
       },
