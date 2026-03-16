@@ -60,17 +60,6 @@ export default defineContentScript({
       browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
     };
 
-    // --- Enter fullscreen: window + video ---
-    const enterFullscreen = () => {
-      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-      if (videoFullscreen) sendFKey();
-    };
-
-    // --- Exit fullscreen: window ---
-    const exitFullscreen = () => {
-      browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
-    };
-
     // --- Persist modifier state ---
     const saveModifierState = (active: boolean) => {
       if (active) {
