@@ -209,7 +209,7 @@ export default defineContentScript({
         // --- Charge / long-press to fullscreen ---
         if (!isEnabled) return;
         if (e.button !== 0) return;
-        if (isInteractive(e.target)) return;
+        if (isInteractive(e.target)) { log("blocked: interactive element"); return; }
 
         // Cancel any existing charge
         if (chargeTimer) {
