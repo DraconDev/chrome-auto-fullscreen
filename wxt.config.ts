@@ -26,6 +26,9 @@ export default defineConfig({
       },
       default_title: "Auto Fullscreen",
     },
+    web_accessible_resources: [
+      { resources: ["settings.html"], matches: ["<all_urls>"] },
+    ],
   },
   modules: ["@wxt-dev/module-react"],
 });

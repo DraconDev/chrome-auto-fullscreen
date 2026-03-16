@@ -2,7 +2,7 @@
   "name": "wxt-react-starter",
   "description": "Premium Long-Press Fullscreen Toggle for Chrome",
   "private": true,
-  "version": "1.4.255",
+  "version": "1.4.256",
   "type": "module",
   "scripts": {
     "dev": "wxt",
