@@ -104,7 +104,9 @@ export default defineContentScript({
       (e: MouseEvent) => {
         if (e.clientY <= TOP_EDGE_THRESHOLD + 5) {
           debugIndicator.style.display = "block";
-          debugIndicator.textContent = `AF: y=${e.clientY} enabled=${isEnabled} topEdge=${topEdgeExitEnabled} oneWay=${oneWayFullscreen}`;
+          const blocked = !topEdgeExitEnabled ? "topEdge OFF" : !isEnabled ? "disabled" : oneWayFullscreen ? "oneWay ON" : "WILL EXIT";
+          debugIndicator.textContent = `AF: y=${e.clientY} ${blocked}`;
+          debugIndicator.style.background = blocked === "WILL EXIT" ? "rgba(0,255,0,0.3)" : "rgba(255,0,0,0.3)";
         } else {
           debugIndicator.style.display = "none";
         }
