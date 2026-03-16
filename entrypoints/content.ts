@@ -81,49 +81,6 @@ export default defineContentScript({
         if (!isEnabled) { log("blocked: isEnabled=false"); return; }
         if (e.button !== 0) { log("blocked: not left click, button=", e.button); return; }
 
-        // Find video: try DOM walk first, then elementFromPoint as fallback
-        let clickedVideo: HTMLVideoElement | null = null;
-
-        // Method 1: Walk up from click target
-        let el = e.target as HTMLElement | null;
-        while (el && el !== document.body) {
-          if (el instanceof HTMLVideoElement) {
-            clickedVideo = el;
-            break;
-          }
-          el = el.parentElement;
-        }
-
-        // Method 2: If not found, check if there's a video at the click position
-        if (!clickedVideo) {
-          const pointEl = document.elementFromPoint(e.clientX, e.clientY);
-          let pel = pointEl as HTMLElement | null;
-          while (pel && pel !== document.body) {
-            if (pel instanceof HTMLVideoElement) {
-              clickedVideo = pel;
-              break;
-            }
-            pel = pel.parentElement;
-          }
-          // Also check if elementFromPoint directly IS a video
-          if (!clickedVideo && pointEl instanceof HTMLVideoElement) {
-            clickedVideo = pointEl;
-          }
-        }
-
-        if (!clickedVideo) {
-          log("blocked: no video found. target=", e.target?.constructor.name, 
-              "tag=", (e.target as HTMLElement)?.tagName);
-          return;
-        }
-        if (clickedVideo.offsetWidth < 300 || clickedVideo.offsetHeight < 200) {
-          log("blocked: video too small", clickedVideo.offsetWidth, "x", clickedVideo.offsetHeight);
-          return;
-        }
-
-        log("video found! size=", clickedVideo.offsetWidth, "x", clickedVideo.offsetHeight,
-            "delay=", longPressDelay, "fullscreen=", !!document.fullscreenElement);
-
         // Cancel any existing charge
         if (chargeTimer) {
           clearTimeout(chargeTimer);
@@ -134,23 +91,52 @@ export default defineContentScript({
         chargeStartY = e.clientY;
         chargeCompleted = false;
 
+        log("charge start, delay=", longPressDelay, "fullscreen=", !!document.fullscreenElement);
+
+        // requestFullscreen() MUST be called within the user gesture (mousedown).
+        // setTimeout breaks the gesture, so for charge mode we use window fullscreen.
+        // Try video element first (better experience), fall back to window fullscreen.
+        const findVideo = (): HTMLVideoElement | null => {
+          const v = document.querySelector("video");
+          if (v && v.offsetWidth >= 200 && v.offsetHeight >= 150) return v;
+          return null;
+        };
+
         if (longPressDelay === 0) {
           // Instant mode - gesture is alive, requestFullscreen works directly
           chargeCompleted = true;
-          log("instant: calling requestFullscreen()");
-          if (!document.fullscreenElement && clickedVideo.requestFullscreen) {
-            clickedVideo.requestFullscreen()
+          const video = findVideo();
+          if (video && !document.fullscreenElement) {
+            log("instant: calling requestFullscreen() on video");
+            video.requestFullscreen()
               .then(() => log("requestFullscreen SUCCESS"))
-              .catch((err) => log("requestFullscreen FAILED:", err));
+              .catch((err) => {
+                log("requestFullscreen failed, trying window fullscreen:", err);
+                browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+              });
+          } else {
+            log("instant: no video, using window fullscreen");
+            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
           }
         } else {
-          // Charge mode - user holds mouse, wait for delay then fullscreen window
-          log("charge: starting timer, delay=", longPressDelay);
+          // Charge mode - user holds mouse, wait for delay then fullscreen
+          log("charge: starting timer");
           chargeTimer = setTimeout(() => {
             chargeTimer = null;
             chargeCompleted = true;
-            log("charge: timer fired, sending setWindowFullscreen");
-            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+            log("charge: timer fired, fullscreening");
+            // Try video fullscreen first (better), fall back to window
+            const video = findVideo();
+            if (video && !document.fullscreenElement) {
+              video.requestFullscreen()
+                .then(() => log("charge requestFullscreen SUCCESS"))
+                .catch(() => {
+                  log("charge requestFullscreen failed, window fullscreen");
+                  browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+                });
+            } else {
+              browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+            }
           }, longPressDelay);
         }
       },
@@ -271,6 +257,7 @@ export default defineContentScript({
         lastFullscreenedVideo = mainVideo;
         lastFullscreenedUrl = mainVideo.currentSrc || mainVideo.src || "";
       }
+      log("auto-fullscreen on load, sending setWindowFullscreen");
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     }
 
