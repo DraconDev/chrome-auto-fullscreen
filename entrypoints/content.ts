@@ -1,25 +1,23 @@
 import { store } from "@/utils/store";
 import { defineContentScript } from "wxt/sandbox";
 
-const log = (...args: unknown[]) => console.log("[AF]", ...args);
-
 const MODIFIER_KEY = "af_modifier";
 const MODIFIER_TTL = 15000;
 
 export default defineContentScript({
   matches: ["<all_urls>"],
   async main() {
-    log("content script loading...");
-    let isEnabled = (await store.getValue()).enabled;
-    let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
-    let oneWayFullscreen = (await store.getValue()).oneWayFullscreen;
-    let autoFullscreenOnNewVideo = (await store.getValue()).autoFullscreenOnNewVideo;
-    let strictSafety = (await store.getValue()).strictSafety;
-    let longPressDelay = (await store.getValue()).longPressDelay;
-    let topEdgeExitEnabled = (await store.getValue()).topEdgeExitEnabled;
-    let rippleEnabled = (await store.getValue()).rippleEnabled;
-    let primaryColor = (await store.getValue()).primaryColor || "#00FFFF";
-    log("loaded. enabled=", isEnabled, "delay=", longPressDelay);
+    // Load all settings in one call
+    const s = await store.getValue();
+    let isEnabled = s.enabled;
+    let autoFullscreenEnabled = s.autoFullscreenEnabled;
+    let oneWayFullscreen = s.oneWayFullscreen;
+    let autoFullscreenOnNewVideo = s.autoFullscreenOnNewVideo;
+    let strictSafety = s.strictSafety;
+    let longPressDelay = s.longPressDelay;
+    let topEdgeExitEnabled = s.topEdgeExitEnabled;
+    let rippleEnabled = s.rippleEnabled;
+    let primaryColor = s.primaryColor || "#00FFFF";
 
     // --- State ---
     let newTabIntent = false;
@@ -50,9 +48,7 @@ export default defineContentScript({
     // --- Persist modifier state to storage (survives keyup timing) ---
     const saveModifierState = (active: boolean) => {
       if (active) {
-        browser.storage.local.set({
-          [MODIFIER_KEY]: { ts: Date.now() },
-        }).catch(() => {});
+        browser.storage.local.set({ [MODIFIER_KEY]: { ts: Date.now() } }).catch(() => {});
       } else {
         browser.storage.local.remove(MODIFIER_KEY).catch(() => {});
       }
@@ -89,33 +85,11 @@ export default defineContentScript({
 
     // --- Top edge exit ---
     const TOP_EDGE_THRESHOLD = 20;
-    // Debug indicator at top of screen
-    const debugIndicator = document.createElement("div");
-    debugIndicator.style.cssText = `
-      position:fixed;top:0;left:0;right:0;height:${TOP_EDGE_THRESHOLD}px;
-      background:rgba(255,0,0,0.3);z-index:2147483646;pointer-events:none;
-      display:none;font:12px monospace;color:white;padding:2px 5px;
-    `;
-    debugIndicator.textContent = "AF: TOP EDGE ZONE";
-    document.body.appendChild(debugIndicator);
-
     document.addEventListener(
       "mousemove",
       (e: MouseEvent) => {
-        if (e.clientY <= TOP_EDGE_THRESHOLD + 5) {
-          debugIndicator.style.display = "block";
-          const blocked = !topEdgeExitEnabled ? "topEdge OFF" : !isEnabled ? "disabled" : oneWayFullscreen ? "oneWay ON" : "WILL EXIT";
-          debugIndicator.textContent = `AF: y=${e.clientY} ${blocked}`;
-          debugIndicator.style.background = blocked === "WILL EXIT" ? "rgba(0,255,0,0.3)" : "rgba(255,0,0,0.3)";
-        } else {
-          debugIndicator.style.display = "none";
-        }
-
-        if (!topEdgeExitEnabled) return;
-        if (!isEnabled) return;
-        if (oneWayFullscreen) return;
+        if (!topEdgeExitEnabled || !isEnabled || oneWayFullscreen) return;
         if (e.clientY <= TOP_EDGE_THRESHOLD) {
-          log("TOP EDGE: sending exit");
           browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
         }
       },
@@ -164,19 +138,8 @@ export default defineContentScript({
       const cx = size / 2;
       const circumference = 2 * Math.PI * r;
 
-      el.style.cssText = `
-        position:fixed;left:${x - size / 2}px;top:${y - size / 2}px;
-        width:${size}px;height:${size}px;pointer-events:none;z-index:2147483647;
-      `;
-      el.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-        <circle cx="${cx}" cy="${cx}" r="${r}" fill="none"
-          stroke="rgba(255,255,255,0.15)" stroke-width="${CHARGE_RING_STROKE}"/>
-        <circle class="af-ring" cx="${cx}" cy="${cx}" r="${r}" fill="none"
-          stroke="${primaryColor}" stroke-width="${CHARGE_RING_STROKE}"
-          stroke-linecap="round" stroke-dasharray="${circumference}"
-          stroke-dashoffset="${circumference}"
-          transform="rotate(-90 ${cx} ${cx})"/>
-      </svg>`;
+      el.style.cssText = `position:fixed;left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;height:${size}px;pointer-events:none;z-index:2147483647;`;
+      el.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="${CHARGE_RING_STROKE}"/><circle class="af-ring" cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${primaryColor}" stroke-width="${CHARGE_RING_STROKE}" stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}" transform="rotate(-90 ${cx} ${cx})"/></svg>`;
 
       document.body.appendChild(el);
       chargeRingEl = el;
@@ -190,9 +153,7 @@ export default defineContentScript({
         const eased = 1 - (1 - progress) * (1 - progress);
         ring.style.strokeDashoffset = String(circumference * (1 - eased));
         el.style.opacity = String(0.4 + eased * 0.5);
-        if (progress < 1) {
-          chargeRingAnim = requestAnimationFrame(tick);
-        }
+        if (progress < 1) chargeRingAnim = requestAnimationFrame(tick);
       };
       chargeRingAnim = requestAnimationFrame(tick);
     };
@@ -230,10 +191,7 @@ export default defineContentScript({
           return;
         }
 
-        if (!isEnabled) return;
-        if (e.button !== 0) return;
-        if (isInteractive(e.target)) return;
-
+        if (!isEnabled || e.button !== 0 || isInteractive(e.target)) return;
         if (chargeTimer) { clearTimeout(chargeTimer); chargeTimer = null; }
 
         chargeStartX = e.clientX;
@@ -285,7 +243,7 @@ export default defineContentScript({
       true,
     );
 
-    // --- SPA URL change detection (YouTube, Odysee, etc.) ---
+    // --- SPA URL change detection ---
     let lastKnownUrl = location.href;
 
     const checkUrlChange = () => {
@@ -293,7 +251,6 @@ export default defineContentScript({
       if (currentUrl !== lastKnownUrl) {
         lastKnownUrl = currentUrl;
         if (isEnabled && autoFullscreenEnabled && autoFullscreenOnNewVideo && !newTabIntent) {
-          log("URL changed to:", currentUrl);
           lastFullscreenedVideo = findMainVideo();
           lastFullscreenedUrl = lastFullscreenedVideo?.currentSrc || lastFullscreenedVideo?.src || "";
           doFullscreen();
@@ -303,11 +260,7 @@ export default defineContentScript({
       browser.storage.local.remove(MMB_KEY).catch(() => {});
     };
 
-    // Poll for URL changes (catches SPA navigation that doesn't fire popstate)
-    setInterval(checkUrlChange, 500);
-
-    // Navigation resets + URL check
-    window.addEventListener("popstate", checkUrlChange);
+    // Patch history methods for instant SPA detection
     const origPushState = history.pushState;
     const origReplaceState = history.replaceState;
     history.pushState = function (...args) {
@@ -318,23 +271,35 @@ export default defineContentScript({
       origReplaceState.apply(this, args);
       checkUrlChange();
     };
+    window.addEventListener("popstate", checkUrlChange);
     window.addEventListener("beforeunload", () => {
       browser.storage.local.remove(MMB_KEY).catch(() => {});
     });
+
+    // Poll for URL changes only when page is visible (saves CPU on background tabs)
+    let urlPollInterval: ReturnType<typeof setInterval> | null = null;
+    const startUrlPoll = () => {
+      if (urlPollInterval) return;
+      urlPollInterval = setInterval(checkUrlChange, 1000);
+    };
+    const stopUrlPoll = () => {
+      if (urlPollInterval) { clearInterval(urlPollInterval); urlPollInterval = null; }
+    };
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stopUrlPoll(); else startUrlPoll();
+    });
+    startUrlPoll();
 
     // --- Async checks ---
 
     // Check background for modifier state
     for (let i = 0; i < 5; i++) {
       const resp = await browser.runtime.sendMessage({ action: "getModifierState" });
-      if (resp?.ctrlHeld) {
-        newTabIntent = true;
-        break;
-      }
+      if (resp?.ctrlHeld) { newTabIntent = true; break; }
       await new Promise((r) => setTimeout(r, 100));
     }
 
-    // Check persisted modifier state (survives keyup timing)
+    // Check persisted modifier state
     try {
       const modStored = await browser.storage.local.get(MODIFIER_KEY);
       const modEntry = modStored?.[MODIFIER_KEY];
@@ -369,10 +334,7 @@ export default defineContentScript({
 
     // --- Hide fullscreen exit instructions ---
     const style = document.createElement("style");
-    style.textContent = `
-      .Chrome-Full-Screen-Exit-Instruction { display: none !important; }
-      .Full-Screen-Exit-Instruction { display: none !important; }
-    `;
+    style.textContent = `.Chrome-Full-Screen-Exit-Instruction{display:none!important}.Full-Screen-Exit-Instruction{display:none!important}`;
     document.head.appendChild(style);
 
     // --- Settings watcher ---

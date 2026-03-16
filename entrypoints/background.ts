@@ -14,48 +14,32 @@ export default defineBackground({
       if (message.action === "getModifierState") {
         sendResponse({ ctrlHeld });
         if (ctrlResetTimeout) clearTimeout(ctrlResetTimeout);
-        // Keep modifier state alive for 10s so new tabs opened via Ctrl+click can read it
-        ctrlResetTimeout = setTimeout(() => {
-          ctrlHeld = false;
-        }, 10000);
+        ctrlResetTimeout = setTimeout(() => { ctrlHeld = false; }, 10000);
         return true;
       }
 
       if (message.action === "toggleWindowFullscreen") {
         chrome.windows.getCurrent((win) => {
           if (win.id === undefined) return;
-          if (win.state === "fullscreen") {
-            chrome.windows.update(win.id, { state: "normal" });
-          } else {
-            chrome.windows.update(win.id, { state: "fullscreen" });
-          }
+          chrome.windows.update(win.id, {
+            state: win.state === "fullscreen" ? "normal" : "fullscreen",
+          });
         });
         return false;
       }
 
       if (message.action === "setWindowFullscreen") {
         chrome.windows.getCurrent((win) => {
-          if (win.id === undefined) return;
-          console.log("[AF BG] setWindowFullscreen, current state:", win.state);
-          if (win.state !== "fullscreen") {
-            chrome.windows.update(win.id, { state: "fullscreen" }, () => {
-              console.log("[AF BG] entered fullscreen, error:", chrome.runtime.lastError?.message || "none");
-            });
-          }
+          if (win.id === undefined || win.state === "fullscreen") return;
+          chrome.windows.update(win.id, { state: "fullscreen" });
         });
         return false;
       }
 
       if (message.action === "exitWindowFullscreen") {
-        console.log("[AF BG] exitWindowFullscreen received, state:", "checking...");
         chrome.windows.getCurrent((win) => {
-          console.log("[AF BG] window state:", win.state);
-          if (win.id === undefined) return;
-          if (win.state === "fullscreen") {
-            chrome.windows.update(win.id, { state: "normal" }, () => {
-              console.log("[AF BG] exited, error:", chrome.runtime.lastError?.message || "none");
-            });
-          }
+          if (win.id === undefined || win.state !== "fullscreen") return;
+          chrome.windows.update(win.id, { state: "normal" });
         });
         return false;
       }
