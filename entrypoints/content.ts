@@ -111,8 +111,9 @@ export default defineContentScript({
 
         if (!topEdgeExitEnabled) return;
         if (!isEnabled) return;
+        if (oneWayFullscreen) return;
         if (e.clientY <= TOP_EDGE_THRESHOLD) {
-          log("TOP EDGE: sending exit, y=" + e.clientY, "enabled=", isEnabled, "topEdge=", topEdgeExitEnabled, "oneWay=", oneWayFullscreen);
+          log("TOP EDGE: sending exit");
           browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
         }
       },
