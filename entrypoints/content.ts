@@ -54,12 +54,6 @@ export default defineContentScript({
 
     // --- Top edge exit ---
     const TOP_EDGE_THRESHOLD = 10;
-    let isWindowFullscreen = false;
-
-    // Track fullscreen state changes
-    document.addEventListener("fullscreenchange", () => {
-      isWindowFullscreen = !!document.fullscreenElement;
-    });
 
     document.addEventListener(
       "mousemove",
@@ -67,12 +61,8 @@ export default defineContentScript({
         if (!topEdgeExitEnabled) return;
         if (!isEnabled) return;
         if (oneWayFullscreen) return;
-        if (!isWindowFullscreen) return;
         if (e.clientY <= TOP_EDGE_THRESHOLD) {
           log("TOP EDGE HIT y=" + e.clientY);
-          if (document.fullscreenElement && document.exitFullscreen) {
-            document.exitFullscreen();
-          }
           browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
         }
       },
