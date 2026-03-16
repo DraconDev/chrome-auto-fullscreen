@@ -128,6 +128,22 @@ unwatch();
           updateState({ topEdgeExitEnabled: !state?.topEdgeExitEnabled })
         }
       />
+
+      <Toggle
+        label="Enter only (no exit)"
+        checked={!!state?.oneWayFullscreen}
+        onChange={() =>
+          updateState({ oneWayFullscreen: !state?.oneWayFullscreen })
+        }
+      />
+
+      <Toggle
+        label="Fullscreen on new video"
+        checked={!!state?.autoFullscreenOnNewVideo}
+        onChange={() =>
+          updateState({ autoFullscreenOnNewVideo: !state?.autoFullscreenOnNewVideo })
+        }
+      />
     </div>
 
     {/* Visuals */}
