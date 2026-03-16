@@ -1,15 +1,25 @@
 # Auto Fullscreen
 
-A premium Chrome extension that maximizes your screen real estate with a fast, intuitive long-press gesture. Intelligently respects your workflow while giving you total control over your immersion.
+A Chrome extension that automatically enters fullscreen when browsing. Works on any page — not just videos.
 
-## Features
+## What It Does
 
-- **Turbo Long Press**: Hold left-click <span className="text-white">**in place**</span> for **0.2s** (default) to toggle fullscreen. Custom timing from 0.1s to 1s.
-- **Visual Charge Ring**: A subtle ring charges at your cursor for instant feedback. Customizable colors.
-- **Safety Heuristics**: Intelligently ignores text selection and interactive elements (links/buttons) by default. Toggleable for absolute control.
-- **Top Edge Exit**: Move cursor to the very top edge to seamlessly exit fullscreen mode.
-- **Premium Design**: Modern, glassmorphic UI for effortless configuration.
-- **Developer Ready**: Built with WXT, Bun, React, and TypeScript.
+1. **Auto-Fullscreen on Load** — Opens any page in fullscreen automatically
+2. **Click/Charge to Fullscreen** — Left-click anywhere on the page and hold (default 200ms) to enter fullscreen
+3. **SPA Navigation Detection** — On single-page apps like YouTube or Odysee, detects content changes and auto-fullscreens
+
+## How It Works
+
+### Regular Websites (Wikipedia, Google, etc.)
+Page load triggers fullscreen. Click-and-hold anywhere enters fullscreen.
+
+### Single-Page Apps (YouTube, Odysee)
+Since SPAs don't reload the page, the extension detects new content via video playback events. When a new video starts playing, it's treated as a navigation and triggers fullscreen.
+
+### Fullscreen Method
+- **Click (instant mode, 0ms)** — Uses the Fullscreen API (`requestFullscreen`) directly within the user gesture
+- **Charge (hold mode, 200ms+)** — Uses browser window fullscreen (`chrome.windows.update`), which doesn't require a gesture
+- **Auto (on load/navigation)** — Uses browser window fullscreen
 
 ## Installation
 
@@ -19,13 +29,13 @@ A premium Chrome extension that maximizes your screen real estate with a fast, i
 2. Install dependencies:
 
 ```bash
-bun install
+npm install
 ```
 
 3. Build the extension:
 
 ```bash
-bun run build
+npm run build
 ```
 
 4. Load the unpacked extension from `.output/chrome-mv3` in Chrome (`chrome://extensions` -> Load Unpacked).
@@ -34,15 +44,23 @@ bun run build
 
 ```bash
 # Start dev server
-bun run dev
+npm run dev
 
 # Build for production
-bun run build
+npm run build
 ```
 
-## Contributing
+## Settings
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+- **Enabled** — Toggle the extension on/off
+- **Auto-Fullscreen on Load** — Automatically fullscreen when a page loads
+- **Long Press Delay** — How long to hold click before fullscreen (0 = instant, default 200ms)
+- **Enter Only** — One-way fullscreen: extension enters fullscreen but never exits it
+- **Fullscreen on New Video** — Auto-fullscreen on SPA navigation (YouTube, Odysee)
+
+## Permissions
+
+- `storage` — Save user settings
 
 ## License
 
