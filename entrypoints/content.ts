@@ -165,6 +165,7 @@ export default defineContentScript({
         const dx = Math.abs(e.clientX - chargeStartX);
         const dy = Math.abs(e.clientY - chargeStartY);
         if (dx > 50 || dy > 50) {
+          log("charge cancelled: mouse moved too far");
           clearTimeout(chargeTimer);
           chargeTimer = null;
         }
@@ -177,6 +178,7 @@ export default defineContentScript({
       "mouseup",
       () => {
         if (chargeTimer) {
+          log("charge cancelled: mouse released early");
           clearTimeout(chargeTimer);
           chargeTimer = null;
         }
