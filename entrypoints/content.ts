@@ -127,7 +127,7 @@ export default defineContentScript({
     // Triggered from the play handler when the first video starts.
     // Don't call setWindowFullscreen here - it races with the mousedown handler.
     // The play event always fires AFTER mousedown, so newTabIntent is reliable there.
-    const shouldAutoFullscreenOnLoad =
+    let shouldAutoFullscreenOnLoad =
       isEnabled && autoFullscreenEnabled && !newTabIntent;
 
     // --- Hide fullscreen exit instructions ---
