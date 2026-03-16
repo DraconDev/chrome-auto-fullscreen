@@ -79,18 +79,15 @@ export default defineContentScript({
 
     // Detect SPA navigation (history.pushState/replaceState)
     // More reliable than MutationObserver which fires on any DOM change
-    const resetOnNav = () => {
-      newTabIntent = false;
-    };
     const origPushState = history.pushState;
     const origReplaceState = history.replaceState;
     history.pushState = function (...args) {
       origPushState.apply(this, args);
-      resetOnNav();
+      newTabIntent = false;
     };
     history.replaceState = function (...args) {
       origReplaceState.apply(this, args);
-      resetOnNav();
+      newTabIntent = false;
     };
 
     // --- Send F key when a NEW video starts playing ---
