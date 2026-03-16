@@ -47,8 +47,14 @@ export default defineContentScript({
       if (videoFullscreen) browser.runtime.sendMessage({ action: "sendFKey" });
     };
 
-    // --- Enter fullscreen: window + video ---
+    // --- Enter fullscreen: window only ---
     const enterFullscreen = () => {
+      isFullscreen = true;
+      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+    };
+
+    // --- Enter fullscreen from click: window + F key for video ---
+    const enterFullscreenFromClick = () => {
       isFullscreen = true;
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       sendFKey();
@@ -181,7 +187,7 @@ export default defineContentScript({
 
       const doChargeAction = () => {
         if (neverAutoExit || !isFullscreen) {
-          enterFullscreen();
+          enterFullscreenFromClick();
         } else {
           exitFullscreen();
         }
