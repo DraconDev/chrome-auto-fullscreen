@@ -137,23 +137,22 @@ export default defineContentScript({
           // Different video element = new video, fullscreen
           lastFullscreenedVideo = video;
 
-          // First video on page load → window fullscreen
-          // Subsequent videos → F key (video player fullscreen)
-          if (shouldAutoFullscreenOnLoad) {
-            shouldAutoFullscreenOnLoad = false;
-            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-          } else {
-            browser.runtime.sendMessage({ action: "sendFKey" });
-          }
+          browser.runtime.sendMessage({ action: "sendFKey" });
         }, 300);
       },
       true,
     );
 
-    // --- Auto-fullscreen on initial load flag ---
-    // Computed after all async operations, so newTabIntent is reliable.
-    let shouldAutoFullscreenOnLoad =
-      isEnabled && autoFullscreenEnabled && !newTabIntent;
+    // --- Auto-fullscreen on initial load ---
+    // Runs immediately on page load. The mousedown handler fires before this
+    // code (synchronous execution), so newTabIntent is reliable here.
+    if (isEnabled && autoFullscreenEnabled && !newTabIntent) {
+      const mainVideo = document.querySelector("video");
+      if (mainVideo) {
+        lastFullscreenedVideo = mainVideo;
+      }
+      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+    }
 
     // --- Hide fullscreen exit instructions ---
     const style = document.createElement("style");
