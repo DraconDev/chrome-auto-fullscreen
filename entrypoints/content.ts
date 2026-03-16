@@ -8,6 +8,8 @@ export default defineContentScript({
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
     let oneWayFullscreen = (await store.getValue()).oneWayFullscreen;
     let autoFullscreenOnNewVideo = (await store.getValue()).autoFullscreenOnNewVideo;
+    let strictSafety = (await store.getValue()).strictSafety;
+    let longPressDelay = (await store.getValue()).longPressDelay;
 
     // --- State ---
     let newTabIntent = false;
@@ -15,8 +17,6 @@ export default defineContentScript({
     const MMB_KEY = "af_mmb_intent";
 
     // --- Register ALL event handlers FIRST (synchronous, before any async) ---
-    // This ensures MMB/Ctrl+click is captured even if the content script
-    // was just reloaded by Chrome under memory pressure.
 
     // Physical modifier key detection
     document.addEventListener(
@@ -45,13 +45,16 @@ export default defineContentScript({
       }
     });
 
-    // MMB/Ctrl+click: prevent fullscreen on current page
+    // --- Combined mousedown: MMB/Ctrl+click detection + charge timer ---
+    let chargeTimer: ReturnType<typeof setTimeout> | null = null;
+    let chargeStartX = 0;
+    let chargeStartY = 0;
+    let chargeButton = -1;
+
     document.addEventListener(
       "mousedown",
       (e: MouseEvent) => {
-        // Use BOTH e.ctrlKey AND getModifierState for maximum reliability.
-        // e.ctrlKey reflects the event's modifier state.
-        // getModifierState checks the physical key state (more reliable in some cases).
+        // Check for MMB/Ctrl+click (new tab intent)
         const hasModifier =
           e.ctrlKey ||
           e.metaKey ||
@@ -67,6 +70,61 @@ export default defineContentScript({
             .set({ [MMB_KEY]: { url: location.href } })
             .catch(() => {});
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
+          return;
+        }
+
+        // --- Charge / long-press to fullscreen ---
+        if (!isEnabled) return;
+        if (e.button !== 0) return; // Only left click
+        if (newTabIntent) return;
+
+        // Clear any existing timer
+        if (chargeTimer) {
+          clearTimeout(chargeTimer);
+          chargeTimer = null;
+        }
+
+        // Record start position (cancel if mouse moves too far)
+        chargeStartX = e.clientX;
+        chargeStartY = e.clientY;
+        chargeButton = e.button;
+
+        if (longPressDelay === 0) {
+          // Instant click mode - send F immediately
+          browser.runtime.sendMessage({ action: "sendFKey" });
+        } else {
+          // Charge mode - wait for long press
+          chargeTimer = setTimeout(() => {
+            chargeTimer = null;
+            browser.runtime.sendMessage({ action: "sendFKey" });
+          }, longPressDelay);
+        }
+      },
+      true,
+    );
+
+    // Cancel charge if mouse moves too far
+    document.addEventListener(
+      "mousemove",
+      (e: MouseEvent) => {
+        if (!chargeTimer) return;
+        const dx = Math.abs(e.clientX - chargeStartX);
+        const dy = Math.abs(e.clientY - chargeStartY);
+        if (dx > 10 || dy > 10) {
+          clearTimeout(chargeTimer);
+          chargeTimer = null;
+        }
+      },
+      true,
+    );
+
+    // Cancel charge if mouse released before timer
+    document.addEventListener(
+      "mouseup",
+      () => {
+        if (chargeTimer) {
+          clearTimeout(chargeTimer);
+          chargeTimer = null;
         }
       },
       true,
@@ -89,12 +147,11 @@ export default defineContentScript({
       newTabIntent = false;
       browser.storage.local.remove(MMB_KEY).catch(() => {});
     };
-    // Clear stale storage on page unload (regular link navigation)
     window.addEventListener("beforeunload", () => {
       browser.storage.local.remove(MMB_KEY).catch(() => {});
     });
 
-    // Play handler: fullscreen new videos
+    // --- Play handler: auto-fullscreen new videos ---
     document.addEventListener(
       "play",
       (e) => {
@@ -116,7 +173,11 @@ export default defineContentScript({
           // - Different video element = new video (always fullscreen)
           // - Same element but different src = SPA navigation (YouTube/Odysee)
           const elementChanged = video !== lastFullscreenedVideo;
-          const srcChanged = src !== (lastFullscreenedVideo?.currentSrc || lastFullscreenedVideo?.src || "");
+          const srcChanged =
+            src !==
+            (lastFullscreenedVideo?.currentSrc ||
+              lastFullscreenedVideo?.src ||
+              "");
 
           if (!elementChanged && !srcChanged) return;
           if (!elementChanged && !autoFullscreenOnNewVideo) return;
@@ -128,7 +189,7 @@ export default defineContentScript({
       true,
     );
 
-    // --- Now do all async checks (handlers are already registered above) ---
+    // --- Async checks (handlers are already registered above) ---
 
     // Check background for modifier state (new tab detection)
     for (let i = 0; i < 5; i++) {
@@ -154,8 +215,6 @@ export default defineContentScript({
     } catch {}
 
     // --- Auto-fullscreen on initial load ---
-    // Runs AFTER all async checks complete. By now, if the user MMB/Ctrl+clicked,
-    // the mousedown handler has already set newTabIntent = true.
     if (isEnabled && autoFullscreenEnabled && !newTabIntent) {
       const mainVideo = document.querySelector("video");
       if (mainVideo) {
@@ -172,13 +231,15 @@ export default defineContentScript({
     `;
     document.head.appendChild(style);
 
-    // --- Settings watcher (debounced) ---
+    // --- Settings watcher ---
     let settingsTimeout: ReturnType<typeof setTimeout> | null = null;
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
       autoFullscreenEnabled = newValue.autoFullscreenEnabled;
       oneWayFullscreen = newValue.oneWayFullscreen;
       autoFullscreenOnNewVideo = newValue.autoFullscreenOnNewVideo;
+      strictSafety = newValue.strictSafety;
+      longPressDelay = newValue.longPressDelay;
       if (!isEnabled) {
         if (settingsTimeout) clearTimeout(settingsTimeout);
         settingsTimeout = setTimeout(() => {
