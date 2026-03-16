@@ -7,12 +7,14 @@ const log = (...args: unknown[]) => console.log("[AF]", ...args);
 export default defineContentScript({
   matches: ["<all_urls>"],
   async main() {
+    log("content script loading...");
     let isEnabled = (await store.getValue()).enabled;
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
     let oneWayFullscreen = (await store.getValue()).oneWayFullscreen;
     let autoFullscreenOnNewVideo = (await store.getValue()).autoFullscreenOnNewVideo;
     let strictSafety = (await store.getValue()).strictSafety;
     let longPressDelay = (await store.getValue()).longPressDelay;
+    log("loaded. enabled=", isEnabled, "delay=", longPressDelay);
 
     // --- State ---
     let newTabIntent = false;
