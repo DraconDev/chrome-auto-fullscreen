@@ -3,6 +3,11 @@ import { defineContentScript } from "wxt/sandbox";
 
 const log = (...args: unknown[]) => console.log("[AF]", ...args);
 
+// Storage key for modifier state (persists across content script reloads)
+const MODIFIER_KEY = "af_modifier";
+// How long modifier state stays active (ms)
+const MODIFIER_TTL = 15000;
+
 export default defineContentScript({
   matches: ["<all_urls>"],
   async main() {
@@ -16,13 +21,59 @@ export default defineContentScript({
     let topEdgeExitEnabled = (await store.getValue()).topEdgeExitEnabled;
     let rippleEnabled = (await store.getValue()).rippleEnabled;
     let primaryColor = (await store.getValue()).primaryColor || "#00FFFF";
-    log("loaded. enabled=", isEnabled, "delay=", longPressDelay);
+    let fullscreenVideo = (await store.getValue()).fullscreenVideo;
+    log("loaded. enabled=", isEnabled, "delay=", longPressDelay, "fullscreenVideo=", fullscreenVideo);
 
     // --- State ---
     let newTabIntent = false;
     let lastFullscreenedVideo: HTMLVideoElement | null = null;
     let lastFullscreenedUrl = "";
     const MMB_KEY = "af_mmb_intent";
+
+    // --- Helper: find main video on page ---
+    const findMainVideo = (): HTMLVideoElement | null => {
+      const videos = document.querySelectorAll("video");
+      let best: HTMLVideoElement | null = null;
+      let bestArea = 0;
+      for (const v of videos) {
+        const area = v.offsetWidth * v.offsetHeight;
+        if (area > bestArea && v.offsetWidth >= 200 && v.offsetHeight >= 150) {
+          best = v;
+          bestArea = area;
+        }
+      }
+      return best;
+    };
+
+    // --- Helper: do fullscreen (video or window) ---
+    const doFullscreen = (inGesture: boolean) => {
+      if (fullscreenVideo && inGesture) {
+        // Try video fullscreen (only works within user gesture)
+        const video = findMainVideo();
+        if (video && !document.fullscreenElement) {
+          log("fullscreen: requesting video fullscreen");
+          video.requestFullscreen().catch(() => {
+            log("fullscreen: video failed, falling back to window");
+            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+          });
+          return;
+        }
+      }
+      // Window fullscreen (works anytime, no gesture needed)
+      log("fullscreen: window fullscreen");
+      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+    };
+
+    // --- Persist modifier state to storage (survives keyup timing) ---
+    const saveModifierState = (active: boolean) => {
+      if (active) {
+        browser.storage.local.set({
+          [MODIFIER_KEY]: { ts: Date.now() },
+        }).catch(() => {});
+      } else {
+        browser.storage.local.remove(MODIFIER_KEY).catch(() => {});
+      }
+    };
 
     // --- Register ALL event handlers FIRST ---
 
@@ -36,6 +87,7 @@ export default defineContentScript({
           e.getModifierState("Alt")
         ) {
           newTabIntent = true;
+          saveModifierState(true);
         }
       },
       true,
@@ -49,19 +101,18 @@ export default defineContentScript({
     document.addEventListener("keyup", (e) => {
       if (!e.ctrlKey && !e.metaKey) {
         browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
+        // DON'T clear storage state here - let it expire by TTL
+        // This prevents the race where keyup fires before new tab checks
       }
     });
 
     // --- Top edge exit ---
     const TOP_EDGE_THRESHOLD = 10;
-
     document.addEventListener(
       "mousemove",
       (e: MouseEvent) => {
         if (!topEdgeExitEnabled) return;
         if (!isEnabled) return;
-        // NOTE: oneWayFullscreen does NOT block manual exit via top edge.
-        // It only prevents auto-exit on navigation (handled in play handler).
         if (e.clientY <= TOP_EDGE_THRESHOLD) {
           log("TOP EDGE HIT y=" + e.clientY);
           browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
@@ -75,7 +126,6 @@ export default defineContentScript({
       if (!strictSafety) return false;
       const el = target as HTMLElement | null;
       if (!el) return false;
-      // Walk up to find interactive ancestor
       let node: HTMLElement | null = el;
       while (node && node !== document.body) {
         const tag = node.tagName;
@@ -90,7 +140,7 @@ export default defineContentScript({
           node.getAttribute("role") === "link" ||
           node.isContentEditable
         ) {
-          log("interactive element blocked:", tag, node);
+          log("interactive element blocked:", tag);
           return true;
         }
         node = node.parentElement;
@@ -119,13 +169,8 @@ export default defineContentScript({
       const circumference = 2 * Math.PI * r;
 
       el.style.cssText = `
-        position:fixed;
-        left:${x - size / 2}px;
-        top:${y - size / 2}px;
-        width:${size}px;
-        height:${size}px;
-        pointer-events:none;
-        z-index:2147483647;
+        position:fixed;left:${x - size / 2}px;top:${y - size / 2}px;
+        width:${size}px;height:${size}px;pointer-events:none;z-index:2147483647;
       `;
       el.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
         <circle cx="${cx}" cy="${cx}" r="${r}" fill="none"
@@ -140,17 +185,14 @@ export default defineContentScript({
       document.body.appendChild(el);
       chargeRingEl = el;
 
-      // Animate with rAF for smooth control
       const ring = el.querySelector(".af-ring") as SVGCircleElement | null;
       if (!ring) return;
       const start = performance.now();
 
       const tick = (now: number) => {
         const progress = Math.min((now - start) / duration, 1);
-        // Ease-out quad for smoother feel
         const eased = 1 - (1 - progress) * (1 - progress);
         ring.style.strokeDashoffset = String(circumference * (1 - eased));
-        // Fade in opacity
         el.style.opacity = String(0.4 + eased * 0.5);
         if (progress < 1) {
           chargeRingAnim = requestAnimationFrame(tick);
@@ -160,21 +202,12 @@ export default defineContentScript({
     };
 
     const removeChargeRing = () => {
-      if (chargeRingAnim) {
-        cancelAnimationFrame(chargeRingAnim);
-        chargeRingAnim = null;
-      }
-      if (chargeRingEl) {
-        chargeRingEl.remove();
-        chargeRingEl = null;
-      }
+      if (chargeRingAnim) { cancelAnimationFrame(chargeRingAnim); chargeRingAnim = null; }
+      if (chargeRingEl) { chargeRingEl.remove(); chargeRingEl = null; }
     };
 
     const completeChargeRing = () => {
-      if (chargeRingAnim) {
-        cancelAnimationFrame(chargeRingAnim);
-        chargeRingAnim = null;
-      }
+      if (chargeRingAnim) { cancelAnimationFrame(chargeRingAnim); chargeRingAnim = null; }
       if (chargeRingEl) {
         chargeRingEl.style.transition = "opacity 0.15s ease-out, transform 0.15s ease-out";
         chargeRingEl.style.opacity = "0";
@@ -191,50 +224,39 @@ export default defineContentScript({
       (e: MouseEvent) => {
         // Check for MMB/Ctrl+click (new tab intent)
         const hasModifier =
-          e.ctrlKey ||
-          e.metaKey ||
-          e.altKey ||
-          e.button === 1 ||
-          e.getModifierState("Control") ||
-          e.getModifierState("Meta") ||
-          e.getModifierState("Alt");
+          e.ctrlKey || e.metaKey || e.altKey || e.button === 1 ||
+          e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Alt");
 
         if (hasModifier) {
           newTabIntent = true;
-          browser.storage.local
-            .set({ [MMB_KEY]: { url: location.href } })
-            .catch(() => {});
+          saveModifierState(true);
+          browser.storage.local.set({ [MMB_KEY]: { url: location.href } }).catch(() => {});
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
           return;
         }
 
-        // --- Charge / long-press to fullscreen ---
         if (!isEnabled) return;
         if (e.button !== 0) return;
         if (isInteractive(e.target)) { log("blocked: interactive element"); return; }
 
-        // Cancel any existing charge
-        if (chargeTimer) {
-          clearTimeout(chargeTimer);
-          chargeTimer = null;
-        }
+        if (chargeTimer) { clearTimeout(chargeTimer); chargeTimer = null; }
 
         chargeStartX = e.clientX;
         chargeStartY = e.clientY;
         chargeCompleted = false;
 
         if (longPressDelay === 0) {
-          // Instant mode
+          // Instant mode - gesture is alive, video fullscreen works here
           chargeCompleted = true;
-          browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+          doFullscreen(true);
         } else {
-          // Charge mode
+          // Charge mode - gesture broken after setTimeout, only window fullscreen works
           showChargeRing(e.clientX, e.clientY, longPressDelay);
           chargeTimer = setTimeout(() => {
             chargeTimer = null;
             chargeCompleted = true;
             completeChargeRing();
-            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+            doFullscreen(false);
           }, longPressDelay);
         }
       },
@@ -313,7 +335,8 @@ export default defineContentScript({
 
         lastFullscreenedVideo = video;
         lastFullscreenedUrl = src;
-        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+        // Auto-fullscreen on play: no gesture, use window fullscreen
+        doFullscreen(false);
       },
       true,
     );
@@ -322,15 +345,25 @@ export default defineContentScript({
 
     // Check background for modifier state
     for (let i = 0; i < 5; i++) {
-      const resp = await browser.runtime.sendMessage({
-        action: "getModifierState",
-      });
+      const resp = await browser.runtime.sendMessage({ action: "getModifierState" });
       if (resp?.ctrlHeld) {
         newTabIntent = true;
         break;
       }
       await new Promise((r) => setTimeout(r, 100));
     }
+
+    // Check persisted modifier state (survives keyup timing)
+    try {
+      const modStored = await browser.storage.local.get(MODIFIER_KEY);
+      const modEntry = modStored?.[MODIFIER_KEY];
+      if (modEntry?.ts && (Date.now() - modEntry.ts) < MODIFIER_TTL) {
+        log("modifier state from storage: active");
+        newTabIntent = true;
+      } else if (modEntry) {
+        browser.storage.local.remove(MODIFIER_KEY).catch(() => {});
+      }
+    } catch {}
 
     // Check persisted MMB state
     try {
@@ -345,12 +378,12 @@ export default defineContentScript({
 
     // --- Auto-fullscreen on initial load ---
     if (isEnabled && autoFullscreenEnabled && !newTabIntent) {
-      const mainVideo = document.querySelector("video");
+      const mainVideo = findMainVideo();
       if (mainVideo) {
         lastFullscreenedVideo = mainVideo;
         lastFullscreenedUrl = mainVideo.currentSrc || mainVideo.src || "";
       }
-      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+      doFullscreen(false);
     }
 
     // --- Hide fullscreen exit instructions ---
@@ -373,6 +406,7 @@ export default defineContentScript({
       topEdgeExitEnabled = newValue.topEdgeExitEnabled;
       rippleEnabled = newValue.rippleEnabled;
       primaryColor = newValue.primaryColor || "#00FFFF";
+      fullscreenVideo = newValue.fullscreenVideo;
       if (!isEnabled) {
         if (settingsTimeout) clearTimeout(settingsTimeout);
         settingsTimeout = setTimeout(() => {
