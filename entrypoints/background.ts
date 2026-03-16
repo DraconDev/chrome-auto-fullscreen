@@ -33,10 +33,13 @@ export default defineBackground({
       }
 
       if (message.action === "setWindowFullscreen") {
+        console.log("[AF BG] setWindowFullscreen received");
         chrome.windows.getCurrent((win) => {
           if (win.id === undefined) return;
           if (win.state !== "fullscreen") {
-            chrome.windows.update(win.id, { state: "fullscreen" });
+            chrome.windows.update(win.id, { state: "fullscreen" }, () => {
+              console.log("[AF BG] entered fullscreen");
+            });
           }
         });
         return false;
