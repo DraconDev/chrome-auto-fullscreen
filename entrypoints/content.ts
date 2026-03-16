@@ -6,6 +6,8 @@ export default defineContentScript({
   async main() {
     let isEnabled = (await store.getValue()).enabled;
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
+    let oneWayFullscreen = (await store.getValue()).oneWayFullscreen;
+    let autoFullscreenOnNewVideo = (await store.getValue()).autoFullscreenOnNewVideo;
 
     // --- State ---
     let newTabIntent = false;
