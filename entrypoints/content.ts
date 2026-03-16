@@ -1,6 +1,9 @@
 import { store } from "@/utils/store";
 import { defineContentScript } from "wxt/sandbox";
 
+// Debug logging - visible in page console (F12)
+const log = (...args: unknown[]) => console.log("[AF]", ...args);
+
 export default defineContentScript({
   matches: ["<all_urls>"],
   async main() {
