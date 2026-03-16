@@ -100,8 +100,8 @@ export default defineContentScript({
         chargeCompleted = false;
 
         // requestFullscreen() MUST be called within the user gesture (mousedown).
-        // After setTimeout, the gesture is broken and only chrome.debugger can
-        // send the F key at the browser level.
+        // setTimeout breaks the gesture, so for charge mode we use window fullscreen
+        // which doesn't need a gesture or debugger.
         if (longPressDelay === 0) {
           // Instant mode - gesture is alive, requestFullscreen works directly
           chargeCompleted = true;
@@ -109,12 +109,12 @@ export default defineContentScript({
             clickedVideo.requestFullscreen().catch(() => {});
           }
         } else {
-          // Charge mode - user holds mouse, we wait for delay
+          // Charge mode - user holds mouse, wait for delay then fullscreen window
           chargeTimer = setTimeout(() => {
             chargeTimer = null;
             chargeCompleted = true;
-            // Gesture is broken here - only debugger can send real F key
-            browser.runtime.sendMessage({ action: "sendFKey" });
+            // Window fullscreen needs no gesture and no debugger
+            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
           }, longPressDelay);
         }
       },
