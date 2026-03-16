@@ -315,6 +315,8 @@ export default defineContentScript({
       autoFullscreenOnNewVideo = newValue.autoFullscreenOnNewVideo;
       strictSafety = newValue.strictSafety;
       longPressDelay = newValue.longPressDelay;
+      rippleEnabled = newValue.rippleEnabled;
+      primaryColor = newValue.primaryColor || "#00FFFF";
       if (!isEnabled) {
         if (settingsTimeout) clearTimeout(settingsTimeout);
         settingsTimeout = setTimeout(() => {
