@@ -138,7 +138,7 @@ unwatch();
       />
 
       <Toggle
-        label="Fullscreen on new video"
+        label="Fullscreen on navigation"
         checked={!!state?.autoFullscreenOnNewVideo}
         onChange={() =>
           updateState({ autoFullscreenOnNewVideo: !state?.autoFullscreenOnNewVideo })
