@@ -5,235 +5,155 @@ import { useEffect, useState } from "react";
 function App() {
   const [state, setState] = useState<Store | null>(null);
 
-useEffect(() => {
-let mounted = true;
+  useEffect(() => {
+    let mounted = true;
+    store.getValue().then((s) => { if (mounted) setState(s); });
+    const unwatch = store.watch((nv) => { if (mounted && nv) setState(nv); });
+    return () => { mounted = false; unwatch(); };
+  }, []);
 
-store.getValue().then((currentState) => {
-if (mounted) {
-setState(currentState);
-}
-});
-
-const unwatch = store.watch((newValue) => {
-if (mounted && newValue) {
-setState(newValue);
-}
-});
-
-return () => {
-mounted = false;
-unwatch();
-};
-}, []);
-
-  const updateState = async (updates: Partial<Store>) => {
-    if (state) {
-      const newState = { ...state, ...updates };
-      await store.setValue(newState);
-      setState(newState);
-    }
+  const update = async (updates: Partial<Store>) => {
+    if (!state) return;
+    const next = { ...state, ...updates };
+    await store.setValue(next);
+    setState(next);
   };
 
-  const Toggle = ({
-    label,
-    checked,
-    onChange,
-  }: {
-    label: string;
-    checked: boolean;
-    onChange: () => void;
+  const Toggle = ({ label, hint, checked, onChange }: {
+    label: string; hint?: string; checked: boolean; onChange: () => void;
   }) => (
-    <div className="flex items-center justify-between w-full p-3 transition-colors bg-gray-800 rounded-lg hover:bg-gray-750 group">
-      <span className="text-sm font-medium text-gray-200">{label}</span>
-      <button
-        onClick={onChange}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900
-          ${checked ? "bg-blue-600" : "bg-gray-600"}`}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-            ${checked ? "translate-x-6" : "translate-x-1"}`}
-        />
-      </button>
+    <button
+      onClick={onChange}
+      className="w-full flex items-center justify-between px-4 py-3 rounded-xl
+        bg-white/[0.04] hover:bg-white/[0.07] transition-colors group text-left"
+    >
+      <div className="flex-1 min-w-0">
+        <span className="text-sm text-gray-200 block">{label}</span>
+        {hint && <span className="text-[11px] text-gray-500 block mt-0.5">{hint}</span>}
+      </div>
+      <div className={`ml-3 w-9 h-5 rounded-full relative transition-colors shrink-0
+        ${checked ? "bg-cyan-500" : "bg-gray-600"}`}>
+        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform
+          ${checked ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+      </div>
+    </button>
+  );
+
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div className="space-y-1">
+      <h3 className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest px-1 mb-2">
+        {title}
+      </h3>
+      {children}
     </div>
   );
 
   return (
-    <div className="min-h-[400px] w-[320px] bg-gray-900 text-white font-sans selection:bg-blue-500 selection:text-white flex flex-col">
+    <div className="w-[340px] bg-[#0a0a0f] text-white font-sans flex flex-col"
+      style={{ minHeight: 420, maxHeight: 580 }}>
+
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-br from-gray-800 to-gray-900 border-b border-gray-700 shadow-md">
-        <h1 className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-teal-300">
-          Auto Fullscreen
-        </h1>
-        <div
-          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-            state?.enabled
-              ? "bg-blue-500/20 text-blue-300"
-              : "bg-gray-700 text-gray-400"
-          }`}
-        >
-          {state?.enabled ? "Active" : "Off"}
+      <div className="px-5 pt-5 pb-4">
+        <div className="flex items-center justify-between mb-1">
+          <h1 className="text-lg font-bold tracking-tight text-white">
+            Auto Fullscreen
+          </h1>
+          <div className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider
+            ${state?.enabled
+              ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/20"
+              : "bg-gray-800 text-gray-500 border border-gray-700"}`}>
+            {state?.enabled ? "Active" : "Off"}
+          </div>
         </div>
+        <p className="text-[11px] text-gray-500">
+          {state?.longPressDelay === 0
+            ? "Click anywhere to toggle fullscreen"
+            : `Hold click ${state?.longPressDelay ?? 200}ms to toggle fullscreen`}
+        </p>
       </div>
 
-      <div className="flex-1 p-5 space-y-5 overflow-y-auto custom-scrollbar">
-        {/* Quick Tip */}
-        <div className="p-3 bg-blue-500/5 rounded-xl border border-blue-500/10 shadow-sm">
-        <p className="text-[11px] text-blue-400 leading-relaxed text-center font-medium">
-          {state?.longPressDelay === 0
-            ? "Click anywhere to toggle fullscreen instantly."
-            : <>
-                Hold left-click <span className="text-white">in place</span> for{" "}
-                <span className="text-cyan-400">
-                  {state?.longPressDelay ?? 200}ms
-                </span>{" "}
-                to toggle fullscreen.
-              </>
-          }
-        </p>
-        </div>
+      <div className="flex-1 px-5 pb-4 space-y-5 overflow-y-auto"
+        style={{ scrollbarWidth: "thin", scrollbarColor: "#333 transparent" }}>
 
-        {/* Main Controls */}
-        <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1">
-            Behavior
-          </h2>
-
-          <Toggle
-            label="Enable Extension"
+        {/* Core */}
+        <Section title="Core">
+          <Toggle label="Enabled" hint="Master toggle for the extension"
             checked={!!state?.enabled}
-            onChange={() => updateState({ enabled: !state?.enabled })}
-          />
-
-          <Toggle
-            label="Auto-Fullscreen on Load"
+            onChange={() => update({ enabled: !state?.enabled })} />
+          <Toggle label="Fullscreen on load" hint="Auto fullscreen when any page loads"
             checked={!!state?.autoFullscreenEnabled}
-            onChange={() =>
-              updateState({
-                autoFullscreenEnabled: !state?.autoFullscreenEnabled,
-              })
-            }
-          />
+            onChange={() => update({ autoFullscreenEnabled: !state?.autoFullscreenEnabled })} />
+          <Toggle label="Fullscreen on navigation" hint="Detect SPA navigation (YouTube, Odysee)"
+            checked={!!state?.autoFullscreenOnNewVideo}
+            onChange={() => update({ autoFullscreenOnNewVideo: !state?.autoFullscreenOnNewVideo })} />
+        </Section>
 
-          <Toggle
-            label="Block on buttons/links"
+        {/* Interaction */}
+        <Section title="Interaction">
+          <Toggle label="Never auto-exit" hint="Click/charge only enters, never exits"
+            checked={!!state?.oneWayFullscreen}
+            onChange={() => update({ oneWayFullscreen: !state?.oneWayFullscreen })} />
+          <Toggle label="Exit on top edge" hint="Move cursor to top of screen to exit"
+            checked={!!state?.topEdgeExitEnabled}
+            onChange={() => update({ topEdgeExitEnabled: !state?.topEdgeExitEnabled })} />
+          <Toggle label="Block on links/buttons" hint="Don't fullscreen when clicking interactive elements"
             checked={!!state?.strictSafety}
-            onChange={() => updateState({ strictSafety: !state?.strictSafety })}
-          />
+            onChange={() => update({ strictSafety: !state?.strictSafety })} />
+        </Section>
 
-      <Toggle
-        label="Exit on top edge"
-        checked={!!state?.topEdgeExitEnabled}
-        onChange={() =>
-          updateState({ topEdgeExitEnabled: !state?.topEdgeExitEnabled })
-        }
-      />
+        {/* Video */}
+        <Section title="Video">
+          <Toggle label="Fullscreen video (F key)" hint="Also fullscreen the video element on click"
+            checked={!!state?.fullscreenVideo}
+            onChange={() => update({ fullscreenVideo: !state?.fullscreenVideo })} />
+        </Section>
 
-      <Toggle
-        label="Never auto-exit on click"
-        checked={!!state?.oneWayFullscreen}
-        onChange={() =>
-          updateState({ oneWayFullscreen: !state?.oneWayFullscreen })
-        }
-      />
-
-      <Toggle
-        label="Fullscreen on navigation"
-        checked={!!state?.autoFullscreenOnNewVideo}
-        onChange={() =>
-          updateState({ autoFullscreenOnNewVideo: !state?.autoFullscreenOnNewVideo })
-        }
-      />
-
-      <Toggle
-        label="Fullscreen video on click (F key)"
-        checked={!!state?.fullscreenVideo}
-        onChange={() =>
-          updateState({ fullscreenVideo: !state?.fullscreenVideo })
-        }
-      />
-    </div>
-
-    {/* Visuals */}
-    <div className="space-y-3">
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1">
-            Visuals
-          </h2>
-          <Toggle
-            label="Charge FX"
+        {/* Customization */}
+        <Section title="Customization">
+          <Toggle label="Charge FX" hint="Visual ring during charge"
             checked={!!state?.rippleEnabled}
-            onChange={() =>
-              updateState({ rippleEnabled: !state?.rippleEnabled })
-            }
-          />
+            onChange={() => update({ rippleEnabled: !state?.rippleEnabled })} />
 
-          {/* Customization */}
-          <div className="pt-2 border-t border-gray-700/50 space-y-3">
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider pl-1">
-              Customization
-            </h2>
-
-            {/* Charge Time Slider */}
-        <div className="space-y-1">
-          <div className="flex justify-between items-center text-xs text-gray-300">
-            <span>Charge Time</span>
-            <span className="font-mono text-cyan-400">
-              {state?.longPressDelay === 0
-                ? "instant"
-                : `${state?.longPressDelay ?? 200}ms`
-              }
-            </span>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="1000"
-            step="20"
-            value={state?.longPressDelay ?? 200}
-            onChange={(e) =>
-              updateState({ longPressDelay: parseInt(e.target.value) || 0 })
-            }
-            className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-          />
+          {/* Charge Time */}
+          <div className="px-4 py-3 rounded-xl bg-white/[0.04]">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-gray-200">Charge time</span>
+              <span className="text-xs font-mono text-cyan-400">
+                {state?.longPressDelay === 0 ? "instant" : `${state?.longPressDelay ?? 200}ms`}
+              </span>
             </div>
+            <input type="range" min="0" max="1000" step="20"
+              value={state?.longPressDelay ?? 200}
+              onChange={(e) => update({ longPressDelay: parseInt(e.target.value) || 0 })}
+              className="w-full h-1 bg-gray-700 rounded-full appearance-none cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5
+                [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full
+                [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:shadow-md
+                [&::-webkit-slider-thumb]:cursor-pointer" />
+          </div>
 
-            {/* Color Picker */}
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-gray-300">Theme Color</span>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={state?.primaryColor || "#00FFFF"}
-                  onChange={(e) =>
-                    updateState({ primaryColor: e.target.value })
-                  }
-                  className="w-6 h-6 rounded cursor-pointer bg-transparent border-none p-0"
-                />
-              </div>
+          {/* Color */}
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.04]">
+            <span className="text-sm text-gray-200">Theme color</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono text-gray-400">
+                {state?.primaryColor || "#00FFFF"}
+              </span>
+              <input type="color"
+                value={state?.primaryColor || "#00FFFF"}
+                onChange={(e) => update({ primaryColor: e.target.value })}
+                className="w-6 h-6 rounded cursor-pointer bg-transparent border border-gray-600 p-0" />
             </div>
           </div>
-        </div>
-
-        {/* Automation (Removed) */}
+        </Section>
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-4 bg-gray-900 border-t border-gray-800 flex justify-between items-center text-xs text-gray-500">
-        <span>v1.4.2</span>
-        <a
-          href="https://ko-fi.com/adamdracon"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center space-x-1 text-gray-400 hover:text-[#FF5E5B] transition-colors group"
-        >
-          <span>Support</span>
-          <svg
-            className="w-4 h-4 transition-transform transform group-hover:scale-110 text-[#FF5E5B]"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-          </svg>
+      <div className="px-5 py-3 border-t border-white/[0.06] flex justify-between items-center text-[11px] text-gray-600">
+        <span>v1.5</span>
+        <a href="https://ko-fi.com/adamdracon" target="_blank" rel="noopener noreferrer"
+          className="hover:text-gray-400 transition-colors">
+          Support
         </a>
       </div>
     </div>
