@@ -39,9 +39,25 @@ export default defineContentScript({
       return best;
     };
 
+    // --- Fullscreen state tracking (chrome.windows.update doesn't set document.fullscreenElement) ---
+    let isFullscreen = false;
+
     // --- Send F key to fullscreen the video element ---
     const sendFKey = () => {
-      browser.runtime.sendMessage({ action: "sendFKey" });
+      if (videoFullscreen) browser.runtime.sendMessage({ action: "sendFKey" });
+    };
+
+    // --- Enter fullscreen: window + video ---
+    const enterFullscreen = () => {
+      isFullscreen = true;
+      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+      sendFKey();
+    };
+
+    // --- Exit fullscreen: window ---
+    const exitFullscreen = () => {
+      isFullscreen = false;
+      browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
     };
 
     // --- Enter fullscreen: window + video ---
