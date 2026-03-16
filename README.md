@@ -58,7 +58,7 @@ npm run build
 - **Exit on top edge** — Move cursor to top edge to exit fullscreen
 - **Never auto-exit on click** — Click/charge only enters fullscreen, never exits. Top edge exit still works independently.
 - **Fullscreen on navigation** — Auto-fullscreen on SPA navigation (YouTube, Odysee) via URL change detection
-- **Fullscreen video (F key)** — Also send F key to fullscreen the video element alongside window fullscreen
+- **Fullscreen video on click (F key)** — Also send F key to fullscreen the video element on click (uses debugger API, requires one-time "Allow" per tab)
 - **Charge Time** — How long to hold click before fullscreen (0 = instant, default 200ms)
 
 ## Permissions
