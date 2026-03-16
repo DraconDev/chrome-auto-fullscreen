@@ -7,18 +7,17 @@ const MODIFIER_TTL = 15000;
 export default defineContentScript({
   matches: ["<all_urls>"],
   async main() {
-    // Load all settings in one call
     const s = await store.getValue();
     let isEnabled = s.enabled;
     let autoFullscreenEnabled = s.autoFullscreenEnabled;
-    let oneWayFullscreen = s.oneWayFullscreen;
+    let neverAutoExit = s.oneWayFullscreen;
     let autoFullscreenOnNewVideo = s.autoFullscreenOnNewVideo;
     let strictSafety = s.strictSafety;
     let longPressDelay = s.longPressDelay;
     let topEdgeExitEnabled = s.topEdgeExitEnabled;
     let rippleEnabled = s.rippleEnabled;
     let primaryColor = s.primaryColor || "#00FFFF";
-    let fullscreenVideo = s.fullscreenVideo;
+    let videoFullscreen = s.fullscreenVideo;
 
     // --- State ---
     let newTabIntent = false;
@@ -26,7 +25,6 @@ export default defineContentScript({
     let lastFullscreenedUrl = "";
     const MMB_KEY = "af_mmb_intent";
 
-    // --- Helper: find main video on page ---
     const findMainVideo = (): HTMLVideoElement | null => {
       const videos = document.querySelectorAll("video");
       let best: HTMLVideoElement | null = null;
@@ -41,22 +39,23 @@ export default defineContentScript({
       return best;
     };
 
-    // --- Helper: do fullscreen ---
-    // hasGesture=true means we're in a mousedown handler and requestFullscreen() will work
-    const doFullscreen = (hasGesture = false) => {
-      if (fullscreenVideo && hasGesture) {
-        const video = findMainVideo();
-        if (video && !document.fullscreenElement) {
-          video.requestFullscreen().catch(() => {
-            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-          });
-          return;
-        }
-      }
-      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+    // --- Send F key to fullscreen the video element ---
+    const sendFKey = () => {
+      browser.runtime.sendMessage({ action: "sendFKey" });
     };
 
-    // --- Persist modifier state to storage (survives keyup timing) ---
+    // --- Enter fullscreen: window + video ---
+    const enterFullscreen = () => {
+      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+      if (videoFullscreen) sendFKey();
+    };
+
+    // --- Exit fullscreen: window ---
+    const exitFullscreen = () => {
+      browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
+    };
+
+    // --- Persist modifier state ---
     const saveModifierState = (active: boolean) => {
       if (active) {
         browser.storage.local.set({ [MODIFIER_KEY]: { ts: Date.now() } }).catch(() => {});
@@ -65,29 +64,17 @@ export default defineContentScript({
       }
     };
 
-    // --- Register ALL event handlers FIRST ---
-
-    // Physical modifier key detection
-    document.addEventListener(
-      "keydown",
-      (e) => {
-        if (
-          e.getModifierState("Control") ||
-          e.getModifierState("Meta") ||
-          e.getModifierState("Alt")
-        ) {
-          newTabIntent = true;
-          saveModifierState(true);
-        }
-      },
-      true,
-    );
-
+    // --- Modifier key detection ---
     document.addEventListener("keydown", (e) => {
+      if (e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Alt")) {
+        newTabIntent = true;
+        saveModifierState(true);
+      }
       if (e.ctrlKey || e.metaKey) {
         browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
       }
-    });
+    }, true);
+
     document.addEventListener("keyup", (e) => {
       if (!e.ctrlKey && !e.metaKey) {
         browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
@@ -96,18 +83,12 @@ export default defineContentScript({
 
     // --- Top edge exit ---
     const TOP_EDGE_THRESHOLD = 20;
-    document.addEventListener(
-      "mousemove",
-      (e: MouseEvent) => {
-        if (!topEdgeExitEnabled || !isEnabled) return;
-        if (e.clientY <= TOP_EDGE_THRESHOLD) {
-          browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
-        }
-      },
-      true,
-    );
+    document.addEventListener("mousemove", (e: MouseEvent) => {
+      if (!topEdgeExitEnabled || !isEnabled) return;
+      if (e.clientY <= TOP_EDGE_THRESHOLD) exitFullscreen();
+    }, true);
 
-    // --- Strict safety: check if target is interactive ---
+    // --- Strict safety ---
     const isInteractive = (target: EventTarget | null): boolean => {
       if (!strictSafety) return false;
       const el = target as HTMLElement | null;
@@ -115,15 +96,10 @@ export default defineContentScript({
       let node: HTMLElement | null = el;
       while (node && node !== document.body) {
         const tag = node.tagName;
-        if (
-          tag === "A" || tag === "BUTTON" || tag === "INPUT" ||
-          tag === "SELECT" || tag === "TEXTAREA" || tag === "LABEL" ||
-          node.getAttribute("role") === "button" ||
-          node.getAttribute("role") === "link" ||
-          node.isContentEditable
-        ) {
-          return true;
-        }
+        if (tag === "A" || tag === "BUTTON" || tag === "INPUT" || tag === "SELECT" ||
+            tag === "TEXTAREA" || tag === "LABEL" ||
+            node.getAttribute("role") === "button" || node.getAttribute("role") === "link" ||
+            node.isContentEditable) return true;
         node = node.parentElement;
       }
       return false;
@@ -133,38 +109,30 @@ export default defineContentScript({
     let chargeTimer: ReturnType<typeof setTimeout> | null = null;
     let chargeStartX = 0;
     let chargeStartY = 0;
-    let chargeCompleted = false;
     let chargeRingEl: HTMLDivElement | null = null;
     let chargeRingAnim: number | null = null;
-    const CHARGE_RING_SIZE = 44;
-    const CHARGE_RING_STROKE = 3;
+    const CR_SIZE = 44;
+    const CR_STROKE = 3;
 
     const showChargeRing = (x: number, y: number, duration: number) => {
       removeChargeRing();
       if (!rippleEnabled) return;
-
       const el = document.createElement("div");
-      const size = CHARGE_RING_SIZE;
-      const r = (size - CHARGE_RING_STROKE * 2) / 2;
-      const cx = size / 2;
-      const circumference = 2 * Math.PI * r;
-
-      el.style.cssText = `position:fixed;left:${x - size / 2}px;top:${y - size / 2}px;width:${size}px;height:${size}px;pointer-events:none;z-index:2147483647;`;
-      el.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="${CHARGE_RING_STROKE}"/><circle class="af-ring" cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${primaryColor}" stroke-width="${CHARGE_RING_STROKE}" stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}" transform="rotate(-90 ${cx} ${cx})"/></svg>`;
-
+      const r = (CR_SIZE - CR_STROKE * 2) / 2;
+      const cx = CR_SIZE / 2;
+      const circ = 2 * Math.PI * r;
+      el.style.cssText = `position:fixed;left:${x - CR_SIZE / 2}px;top:${y - CR_SIZE / 2}px;width:${CR_SIZE}px;height:${CR_SIZE}px;pointer-events:none;z-index:2147483647;`;
+      el.innerHTML = `<svg width="${CR_SIZE}" height="${CR_SIZE}" viewBox="0 0 ${CR_SIZE} ${CR_SIZE}"><circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="${CR_STROKE}"/><circle class="af-ring" cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${primaryColor}" stroke-width="${CR_STROKE}" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${circ}" transform="rotate(-90 ${cx} ${cx})"/></svg>`;
       document.body.appendChild(el);
       chargeRingEl = el;
-
       const ring = el.querySelector(".af-ring") as SVGCircleElement | null;
       if (!ring) return;
       const start = performance.now();
-
       const tick = (now: number) => {
-        const progress = Math.min((now - start) / duration, 1);
-        const eased = 1 - (1 - progress) * (1 - progress);
-        ring.style.strokeDashoffset = String(circumference * (1 - eased));
-        el.style.opacity = String(0.4 + eased * 0.5);
-        if (progress < 1) chargeRingAnim = requestAnimationFrame(tick);
+        const p = Math.min((now - start) / duration, 1);
+        ring.style.strokeDashoffset = String(circ * (1 - (1 - (1 - p) * (1 - p))));
+        el.style.opacity = String(0.4 + p * 0.5);
+        if (p < 1) chargeRingAnim = requestAnimationFrame(tick);
       };
       chargeRingAnim = requestAnimationFrame(tick);
     };
@@ -177,7 +145,7 @@ export default defineContentScript({
     const completeChargeRing = () => {
       if (chargeRingAnim) { cancelAnimationFrame(chargeRingAnim); chargeRingAnim = null; }
       if (chargeRingEl) {
-        chargeRingEl.style.transition = "opacity 0.15s ease-out, transform 0.15s ease-out";
+        chargeRingEl.style.transition = "opacity 0.15s, transform 0.15s";
         chargeRingEl.style.opacity = "0";
         chargeRingEl.style.transform = "scale(1.3)";
         const el = chargeRingEl;
@@ -187,72 +155,69 @@ export default defineContentScript({
     };
 
     // --- Mousedown handler ---
-    document.addEventListener(
-      "mousedown",
-      (e: MouseEvent) => {
-        const hasModifier =
-          e.ctrlKey || e.metaKey || e.altKey || e.button === 1 ||
-          e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Alt");
+    document.addEventListener("mousedown", (e: MouseEvent) => {
+      const hasModifier =
+        e.ctrlKey || e.metaKey || e.altKey || e.button === 1 ||
+        e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Alt");
 
-        if (hasModifier) {
-          newTabIntent = true;
-          saveModifierState(true);
-          browser.storage.local.set({ [MMB_KEY]: { url: location.href } }).catch(() => {});
-          browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
-          return;
-        }
+      if (hasModifier) {
+        newTabIntent = true;
+        saveModifierState(true);
+        browser.storage.local.set({ [MMB_KEY]: { url: location.href } }).catch(() => {});
+        browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
+        return;
+      }
 
-        if (!isEnabled || e.button !== 0 || isInteractive(e.target)) return;
-        if (chargeTimer) { clearTimeout(chargeTimer); chargeTimer = null; }
+      if (!isEnabled || e.button !== 0 || isInteractive(e.target)) return;
+      if (chargeTimer) { clearTimeout(chargeTimer); chargeTimer = null; }
 
-        chargeStartX = e.clientX;
-        chargeStartY = e.clientY;
-        chargeCompleted = false;
+      chargeStartX = e.clientX;
+      chargeStartY = e.clientY;
 
-        if (longPressDelay === 0) {
-          chargeCompleted = true;
-          doFullscreen(true); // has gesture
+      const doChargeAction = () => {
+        if (neverAutoExit) {
+          enterFullscreen();
         } else {
-          showChargeRing(e.clientX, e.clientY, longPressDelay);
-          chargeTimer = setTimeout(() => {
-            chargeTimer = null;
-            chargeCompleted = true;
-            completeChargeRing();
-            doFullscreen();
-          }, longPressDelay);
+          // Toggle: exit if fullscreen, enter if not
+          if (document.fullscreenElement) {
+            exitFullscreen();
+          } else {
+            // Check window state via message (async, but we try)
+            enterFullscreen();
+          }
         }
-      },
-      true,
-    );
+      };
 
-    // Cancel charge if mouse moves too far
-    document.addEventListener(
-      "mousemove",
-      (e: MouseEvent) => {
-        if (!chargeTimer) return;
-        const dx = Math.abs(e.clientX - chargeStartX);
-        const dy = Math.abs(e.clientY - chargeStartY);
-        if (dx > 50 || dy > 50) {
-          clearTimeout(chargeTimer);
+      if (longPressDelay === 0) {
+        doChargeAction();
+      } else {
+        showChargeRing(e.clientX, e.clientY, longPressDelay);
+        chargeTimer = setTimeout(() => {
           chargeTimer = null;
-          removeChargeRing();
-        }
-      },
-      true,
-    );
+          completeChargeRing();
+          doChargeAction();
+        }, longPressDelay);
+      }
+    }, true);
 
-    // Cancel charge if mouse released before timer
-    document.addEventListener(
-      "mouseup",
-      () => {
-        if (chargeTimer) {
-          clearTimeout(chargeTimer);
-          chargeTimer = null;
-          removeChargeRing();
-        }
-      },
-      true,
-    );
+    // Cancel charge on move
+    document.addEventListener("mousemove", (e: MouseEvent) => {
+      if (!chargeTimer) return;
+      if (Math.abs(e.clientX - chargeStartX) > 50 || Math.abs(e.clientY - chargeStartY) > 50) {
+        clearTimeout(chargeTimer);
+        chargeTimer = null;
+        removeChargeRing();
+      }
+    }, true);
+
+    // Cancel charge on mouseup
+    document.addEventListener("mouseup", () => {
+      if (chargeTimer) {
+        clearTimeout(chargeTimer);
+        chargeTimer = null;
+        removeChargeRing();
+      }
+    }, true);
 
     // --- SPA URL change detection ---
     let lastKnownUrl = location.href;
@@ -264,53 +229,41 @@ export default defineContentScript({
         if (isEnabled && autoFullscreenEnabled && autoFullscreenOnNewVideo && !newTabIntent) {
           lastFullscreenedVideo = findMainVideo();
           lastFullscreenedUrl = lastFullscreenedVideo?.currentSrc || lastFullscreenedVideo?.src || "";
-          doFullscreen();
+          enterFullscreen();
         }
       }
       newTabIntent = false;
       browser.storage.local.remove(MMB_KEY).catch(() => {});
     };
 
-    // Patch history methods for instant SPA detection
     const origPushState = history.pushState;
     const origReplaceState = history.replaceState;
-    history.pushState = function (...args) {
-      origPushState.apply(this, args);
-      checkUrlChange();
-    };
-    history.replaceState = function (...args) {
-      origReplaceState.apply(this, args);
-      checkUrlChange();
-    };
+    history.pushState = function (...args) { origPushState.apply(this, args); checkUrlChange(); };
+    history.replaceState = function (...args) { origReplaceState.apply(this, args); checkUrlChange(); };
     window.addEventListener("popstate", checkUrlChange);
     window.addEventListener("beforeunload", () => {
       browser.storage.local.remove(MMB_KEY).catch(() => {});
     });
 
-    // Poll for URL changes only when page is visible (saves CPU on background tabs)
     let urlPollInterval: ReturnType<typeof setInterval> | null = null;
     const startUrlPoll = () => {
-      if (urlPollInterval) return;
-      urlPollInterval = setInterval(checkUrlChange, 1000);
+      if (!urlPollInterval) urlPollInterval = setInterval(checkUrlChange, 1000);
     };
     const stopUrlPoll = () => {
       if (urlPollInterval) { clearInterval(urlPollInterval); urlPollInterval = null; }
     };
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden) stopUrlPoll(); else startUrlPoll();
+      document.hidden ? stopUrlPoll() : startUrlPoll();
     });
     startUrlPoll();
 
     // --- Async checks ---
-
-    // Check background for modifier state
     for (let i = 0; i < 5; i++) {
       const resp = await browser.runtime.sendMessage({ action: "getModifierState" });
       if (resp?.ctrlHeld) { newTabIntent = true; break; }
       await new Promise((r) => setTimeout(r, 100));
     }
 
-    // Check persisted modifier state
     try {
       const modStored = await browser.storage.local.get(MODIFIER_KEY);
       const modEntry = modStored?.[MODIFIER_KEY];
@@ -321,7 +274,6 @@ export default defineContentScript({
       }
     } catch {}
 
-    // Check persisted MMB state
     try {
       const stored = await browser.storage.local.get(MMB_KEY);
       const entry = stored?.[MMB_KEY];
@@ -332,7 +284,7 @@ export default defineContentScript({
       }
     } catch {}
 
-    // --- Auto-fullscreen on initial load ---
+    // --- Auto-fullscreen on load ---
     if (isEnabled && autoFullscreenEnabled && !newTabIntent) {
       const mainVideo = findMainVideo();
       if (mainVideo) {
@@ -340,32 +292,30 @@ export default defineContentScript({
         lastFullscreenedUrl = mainVideo.currentSrc || mainVideo.src || "";
       }
       lastKnownUrl = location.href;
-      doFullscreen();
+      enterFullscreen();
     }
 
-    // --- Hide fullscreen exit instructions ---
+    // --- Hide exit instructions ---
     const style = document.createElement("style");
     style.textContent = `.Chrome-Full-Screen-Exit-Instruction{display:none!important}.Full-Screen-Exit-Instruction{display:none!important}`;
     document.head.appendChild(style);
 
     // --- Settings watcher ---
     let settingsTimeout: ReturnType<typeof setTimeout> | null = null;
-    store.watch((newValue) => {
-      isEnabled = newValue.enabled;
-      autoFullscreenEnabled = newValue.autoFullscreenEnabled;
-      oneWayFullscreen = newValue.oneWayFullscreen;
-      autoFullscreenOnNewVideo = newValue.autoFullscreenOnNewVideo;
-      strictSafety = newValue.strictSafety;
-      longPressDelay = newValue.longPressDelay;
-      topEdgeExitEnabled = newValue.topEdgeExitEnabled;
-      rippleEnabled = newValue.rippleEnabled;
-      primaryColor = newValue.primaryColor || "#00FFFF";
-      fullscreenVideo = newValue.fullscreenVideo;
+    store.watch((nv) => {
+      isEnabled = nv.enabled;
+      autoFullscreenEnabled = nv.autoFullscreenEnabled;
+      neverAutoExit = nv.oneWayFullscreen;
+      autoFullscreenOnNewVideo = nv.autoFullscreenOnNewVideo;
+      strictSafety = nv.strictSafety;
+      longPressDelay = nv.longPressDelay;
+      topEdgeExitEnabled = nv.topEdgeExitEnabled;
+      rippleEnabled = nv.rippleEnabled;
+      primaryColor = nv.primaryColor || "#00FFFF";
+      videoFullscreen = nv.fullscreenVideo;
       if (!isEnabled) {
         if (settingsTimeout) clearTimeout(settingsTimeout);
-        settingsTimeout = setTimeout(() => {
-          browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
-        }, 100);
+        settingsTimeout = setTimeout(() => exitFullscreen(), 100);
       }
     });
   },
