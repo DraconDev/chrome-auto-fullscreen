@@ -108,8 +108,18 @@ export default defineContentScript({
         setTimeout(() => {
           const src = video.currentSrc || video.src;
           if (!src) return;
-          if (video === lastFullscreenedVideo) return;
-          if (document.fullscreenElement) return;
+
+          // One-way fullscreen: never EXIT fullscreen
+          if (oneWayFullscreen && document.fullscreenElement) return;
+
+          // Detect new video:
+          // - Different video element = new video (always fullscreen)
+          // - Same element but different src = SPA navigation (YouTube/Odysee)
+          const elementChanged = video !== lastFullscreenedVideo;
+          const srcChanged = src !== (lastFullscreenedVideo?.currentSrc || lastFullscreenedVideo?.src || "");
+
+          if (!elementChanged && !srcChanged) return;
+          if (!elementChanged && !autoFullscreenOnNewVideo) return;
 
           lastFullscreenedVideo = video;
           browser.runtime.sendMessage({ action: "sendFKey" });
@@ -167,6 +177,8 @@ export default defineContentScript({
     store.watch((newValue) => {
       isEnabled = newValue.enabled;
       autoFullscreenEnabled = newValue.autoFullscreenEnabled;
+      oneWayFullscreen = newValue.oneWayFullscreen;
+      autoFullscreenOnNewVideo = newValue.autoFullscreenOnNewVideo;
       if (!isEnabled) {
         if (settingsTimeout) clearTimeout(settingsTimeout);
         settingsTimeout = setTimeout(() => {
