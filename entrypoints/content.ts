@@ -233,6 +233,7 @@ export default defineContentScript({
 
         lastFullscreenedVideo = video;
         lastFullscreenedUrl = src;
+        log("play handler: new video, sending setWindowFullscreen");
         browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       },
       true,
