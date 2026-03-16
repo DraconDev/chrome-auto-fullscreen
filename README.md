@@ -56,9 +56,9 @@ npm run build
 - **Auto-Fullscreen on Load** — Automatically fullscreen when any page loads
 - **Block on buttons/links** — Don't fullscreen when clicking interactive elements
 - **Exit on top edge** — Move cursor to top edge to exit fullscreen
-- **Enter only** — Click/charge only enters fullscreen, never exits (top edge exit still works if enabled separately)
+- **Never auto-exit on click** — Click/charge only enters fullscreen, never exits. Top edge exit still works independently.
 - **Fullscreen on navigation** — Auto-fullscreen on SPA navigation (YouTube, Odysee) via URL change detection
-- **Fullscreen video (not window)** — Try fullscreening the video element instead of the browser window (instant click only, falls back to window fullscreen)
+- **Fullscreen video (F key)** — Also send F key to fullscreen the video element alongside window fullscreen
 - **Charge Time** — How long to hold click before fullscreen (0 = instant, default 200ms)
 
 ## Permissions
