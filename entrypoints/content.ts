@@ -180,16 +180,10 @@ export default defineContentScript({
       chargeStartY = e.clientY;
 
       const doChargeAction = () => {
-        if (neverAutoExit) {
+        if (neverAutoExit || !isFullscreen) {
           enterFullscreen();
         } else {
-          // Toggle: exit if fullscreen, enter if not
-          if (document.fullscreenElement) {
-            exitFullscreen();
-          } else {
-            // Check window state via message (async, but we try)
-            enterFullscreen();
-          }
+          exitFullscreen();
         }
       };
 
