@@ -99,7 +99,7 @@ export default defineContentScript({
     document.addEventListener(
       "mousemove",
       (e: MouseEvent) => {
-        if (!topEdgeExitEnabled || !isEnabled || oneWayFullscreen) return;
+        if (!topEdgeExitEnabled || !isEnabled) return;
         if (e.clientY <= TOP_EDGE_THRESHOLD) {
           browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
         }
@@ -360,6 +360,7 @@ export default defineContentScript({
       topEdgeExitEnabled = newValue.topEdgeExitEnabled;
       rippleEnabled = newValue.rippleEnabled;
       primaryColor = newValue.primaryColor || "#00FFFF";
+      fullscreenVideo = newValue.fullscreenVideo;
       if (!isEnabled) {
         if (settingsTimeout) clearTimeout(settingsTimeout);
         settingsTimeout = setTimeout(() => {
