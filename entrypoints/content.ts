@@ -71,18 +71,10 @@ export default defineContentScript({
       true,
     );
 
-    // Reset newTabIntent on URL change (SPA navigation or back/forward)
-    let lastUrl = location.href;
-    const checkUrlChange = () => {
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        newTabIntent = false;
-      }
-    };
-    window.addEventListener("popstate", checkUrlChange);
-    new MutationObserver(checkUrlChange).observe(document, {
-      subtree: true,
-      childList: true,
+    // Reset newTabIntent on actual navigation only (not DOM changes)
+    // popstate covers back/forward. Regular link clicks unload the page anyway.
+    window.addEventListener("popstate", () => {
+      newTabIntent = false;
     });
 
     // --- Send F key when a NEW video starts playing ---
