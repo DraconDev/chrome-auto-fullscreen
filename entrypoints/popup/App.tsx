@@ -144,14 +144,6 @@ unwatch();
           updateState({ autoFullscreenOnNewVideo: !state?.autoFullscreenOnNewVideo })
         }
       />
-
-      <Toggle
-        label="Fullscreen video (not window)"
-        checked={!!state?.fullscreenVideo}
-        onChange={() =>
-          updateState({ fullscreenVideo: !state?.fullscreenVideo })
-        }
-      />
     </div>
 
     {/* Visuals */}
