@@ -59,9 +59,9 @@ export default defineContentScript({
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       if (videoFullscreen) {
         sendFKey();
-        // Update URL tracker immediately to prevent poller from re-triggering
-        // (YouTube adds fs=1 to URL when video goes fullscreen)
-        lastKnownUrl = location.href;
+        // YouTube adds fs=1 to URL when video fullscreen. Delay update so poller
+        // sees the change as ours, not a new navigation.
+        setTimeout(() => { lastKnownUrl = location.href; }, 800);
       }
     };
 
