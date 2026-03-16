@@ -71,11 +71,27 @@ export default defineContentScript({
       true,
     );
 
-    // Reset newTabIntent on actual navigation only (not DOM changes)
+    // Reset newTabIntent on actual navigation
     // popstate covers back/forward. Regular link clicks unload the page anyway.
     window.addEventListener("popstate", () => {
       newTabIntent = false;
     });
+
+    // Detect SPA navigation (history.pushState/replaceState)
+    // More reliable than MutationObserver which fires on any DOM change
+    const resetOnNav = () => {
+      newTabIntent = false;
+    };
+    const origPushState = history.pushState;
+    const origReplaceState = history.replaceState;
+    history.pushState = function (...args) {
+      origPushState.apply(this, args);
+      resetOnNav();
+    };
+    history.replaceState = function (...args) {
+      origReplaceState.apply(this, args);
+      resetOnNav();
+    };
 
     // --- Send F key when a NEW video starts playing ---
     document.addEventListener(
