@@ -98,51 +98,34 @@ export default defineContentScript({
         chargeStartY = e.clientY;
         chargeCompleted = false;
 
-        // Dispatch F key event directly (works within user gesture, no debugger needed)
-        // This triggers the site's own fullscreen handler (YouTube, Odysee, etc.)
-        const sendFKeyLocal = () => {
-          // Method 1: Dispatch F key on document
-          const fDown = new KeyboardEvent("keydown", {
-            key: "f",
-            code: "KeyF",
-            keyCode: 70,
-            which: 70,
-            bubbles: true,
-            cancelable: true,
-          });
-          document.dispatchEvent(fDown);
-
-          // Method 2: Try clicking the fullscreen button (more reliable on some sites)
-          const fullscreenBtn = document.querySelector(
-            [
-              ".ytp-fullscreen-button", // YouTube
-              ".vjs-fullscreen-control", // Video.js (Odysee)
-              '[title*="ullscreen"]', // Generic title match
-              '[aria-label*="ullscreen"]', // Generic aria match
-              ".fullscreen-button",
-              '[data-purpose="fullscreen-button"]',
-            ].join(", "),
-          ) as HTMLElement | null;
-          if (fullscreenBtn) {
-            fullscreenBtn.click();
-          }
-
-          // Method 3: Direct API fallback
+        // CRITICAL: requestFullscreen() MUST be called synchronously within the
+        // user gesture (mousedown). setTimeout breaks the gesture context!
+        // So we call it here directly, then send the debugger F key for site handlers.
+        const doFullscreen = () => {
+          // Direct API - only works if called within user gesture (instant mode)
           if (!document.fullscreenElement && clickedVideo.requestFullscreen) {
             clickedVideo.requestFullscreen().catch(() => {});
           }
+          // Also ask background to send F key via debugger for site handlers
+          browser.runtime.sendMessage({ action: "sendFKey" });
         };
 
         if (longPressDelay === 0) {
-          // Instant mode
+          // Instant mode - gesture is alive, requestFullscreen works here
           chargeCompleted = true;
-          sendFKeyLocal();
+          doFullscreen();
         } else {
-          // Charge mode - wait for long press
+          // Charge mode - user holds mouse, we wait for delay
+          // NOTE: setTimeout breaks gesture, so requestFullscreen may fail
+          // in the callback. We still try for sites that allow it.
           chargeTimer = setTimeout(() => {
             chargeTimer = null;
             chargeCompleted = true;
-            sendFKeyLocal();
+            // Try fullscreen - gesture may be broken, debugger is the fallback
+            if (!document.fullscreenElement && clickedVideo.requestFullscreen) {
+              clickedVideo.requestFullscreen().catch(() => {});
+            }
+            browser.runtime.sendMessage({ action: "sendFKey" });
           }, longPressDelay);
         }
       },
