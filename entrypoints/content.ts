@@ -211,7 +211,7 @@ export default defineContentScript({
 
         if (longPressDelay === 0) {
           chargeCompleted = true;
-          doFullscreen();
+          doFullscreen(true); // has gesture
         } else {
           showChargeRing(e.clientX, e.clientY, longPressDelay);
           chargeTimer = setTimeout(() => {
