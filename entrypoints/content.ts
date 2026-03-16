@@ -8,7 +8,6 @@ export default defineContentScript({
     let autoFullscreenEnabled = (await store.getValue()).autoFullscreenEnabled;
 
     // --- New tab detection (for initial load) ---
-    // New tabs query the background for modifier state set by the originating page
     let newTabIntent = false;
 
     for (let i = 0; i < 5; i++) {
@@ -23,16 +22,19 @@ export default defineContentScript({
     }
 
     // Fallback: check if modifier keys are physically held right now
-    const onKeydown = (e: KeyboardEvent) => {
-      if (
-        e.getModifierState("Control") ||
-        e.getModifierState("Meta") ||
-        e.getModifierState("Alt")
-      ) {
-        newTabIntent = true;
-      }
-    };
-    document.addEventListener("keydown", onKeydown, true);
+    document.addEventListener(
+      "keydown",
+      (e) => {
+        if (
+          e.getModifierState("Control") ||
+          e.getModifierState("Meta") ||
+          e.getModifierState("Alt")
+        ) {
+          newTabIntent = true;
+        }
+      },
+      true,
+    );
 
     // Report modifier state to background (for new tabs to read)
     document.addEventListener("keydown", (e) => {
@@ -49,11 +51,21 @@ export default defineContentScript({
     // --- Track last fullscreened video element ---
     let lastFullscreenedVideo: HTMLVideoElement | null = null;
 
-    // --- MMB/Ctrl+click: prevent fullscreen on current page ---
-    // Only set to true on modifier/MMB click. Never reset on regular click
-    // (was causing race: regular click within 300ms play delay cleared the flag).
-    // Reset only on URL change (SPA navigation).
+    // --- Persist MMB/Ctrl+click state across content script reloads ---
+    // Chrome unloads content scripts under memory pressure (after many tabs).
+    // Without persistence, newTabIntent resets to false and fullscreen triggers.
+    // Set on MMB/Ctrl+click, cleared only on navigation.
+    const MMB_KEY = "af_mmb_intent";
 
+    // Check persisted state
+    try {
+      const stored = await browser.storage.local.get(MMB_KEY);
+      if (stored?.[MMB_KEY]) {
+        newTabIntent = true;
+      }
+    } catch {}
+
+    // --- MMB/Ctrl+click: prevent fullscreen on current page ---
     document.addEventListener(
       "mousedown",
       (e: MouseEvent) => {
@@ -64,30 +76,34 @@ export default defineContentScript({
           e.button === 1
         ) {
           newTabIntent = true;
+          // Persist to survive content script reloads
+          browser.storage.local
+            .set({ [MMB_KEY]: true })
+            .catch(() => {});
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
         }
-        // NOTE: Do NOT reset on regular click - causes race with play handler's 300ms delay
       },
       true,
     );
 
-    // Reset newTabIntent on actual navigation
-    // popstate covers back/forward. Regular link clicks unload the page anyway.
+    // Reset on actual navigation
     window.addEventListener("popstate", () => {
       newTabIntent = false;
+      browser.storage.local.remove(MMB_KEY).catch(() => {});
     });
 
-    // Detect SPA navigation (history.pushState/replaceState)
-    // More reliable than MutationObserver which fires on any DOM change
+    // Detect SPA navigation
     const origPushState = history.pushState;
     const origReplaceState = history.replaceState;
     history.pushState = function (...args) {
       origPushState.apply(this, args);
       newTabIntent = false;
+      browser.storage.local.remove(MMB_KEY).catch(() => {});
     };
     history.replaceState = function (...args) {
       origReplaceState.apply(this, args);
       newTabIntent = false;
+      browser.storage.local.remove(MMB_KEY).catch(() => {});
     };
 
     // --- Send F key when a NEW video starts playing ---
@@ -128,10 +144,8 @@ export default defineContentScript({
       true,
     );
 
-    // --- Auto-fullscreen on initial load ---
-    // Triggered from the play handler when the first video starts.
-    // Don't call setWindowFullscreen here - it races with the mousedown handler.
-    // The play event always fires AFTER mousedown, so newTabIntent is reliable there.
+    // --- Auto-fullscreen on initial load flag ---
+    // Computed after all async operations, so newTabIntent is reliable.
     let shouldAutoFullscreenOnLoad =
       isEnabled && autoFullscreenEnabled && !newTabIntent;
 
