@@ -165,9 +165,11 @@ export default defineContentScript({
         } else {
           // Charge mode - hold for delay then fullscreen
           log("charge: starting timer");
+          showChargeRing(e.clientX, e.clientY, longPressDelay);
           chargeTimer = setTimeout(() => {
             chargeTimer = null;
             chargeCompleted = true;
+            completeChargeRing();
             log("charge: timer fired, window fullscreen");
             browser.runtime.sendMessage({ action: "setWindowFullscreen" });
           }, longPressDelay);
