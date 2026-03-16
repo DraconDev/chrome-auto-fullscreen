@@ -3,9 +3,7 @@ import { defineContentScript } from "wxt/sandbox";
 
 const log = (...args: unknown[]) => console.log("[AF]", ...args);
 
-// Storage key for modifier state (persists across content script reloads)
 const MODIFIER_KEY = "af_modifier";
-// How long modifier state stays active (ms)
 const MODIFIER_TTL = 15000;
 
 export default defineContentScript({
@@ -21,8 +19,7 @@ export default defineContentScript({
     let topEdgeExitEnabled = (await store.getValue()).topEdgeExitEnabled;
     let rippleEnabled = (await store.getValue()).rippleEnabled;
     let primaryColor = (await store.getValue()).primaryColor || "#00FFFF";
-    let fullscreenVideo = (await store.getValue()).fullscreenVideo;
-    log("loaded. enabled=", isEnabled, "delay=", longPressDelay, "fullscreenVideo=", fullscreenVideo);
+    log("loaded. enabled=", isEnabled, "delay=", longPressDelay);
 
     // --- State ---
     let newTabIntent = false;
@@ -45,22 +42,8 @@ export default defineContentScript({
       return best;
     };
 
-    // --- Helper: do fullscreen (video or window) ---
-    const doFullscreen = (inGesture: boolean) => {
-      if (fullscreenVideo && inGesture) {
-        // Try video fullscreen (only works within user gesture)
-        const video = findMainVideo();
-        if (video && !document.fullscreenElement) {
-          log("fullscreen: requesting video fullscreen");
-          video.requestFullscreen().catch(() => {
-            log("fullscreen: video failed, falling back to window");
-            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-          });
-          return;
-        }
-      }
-      // Window fullscreen (works anytime, no gesture needed)
-      log("fullscreen: window fullscreen");
+    // --- Helper: do fullscreen ---
+    const doFullscreen = () => {
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     };
 
@@ -101,8 +84,6 @@ export default defineContentScript({
     document.addEventListener("keyup", (e) => {
       if (!e.ctrlKey && !e.metaKey) {
         browser.runtime.sendMessage({ action: "setModifiers", ctrl: false });
-        // DON'T clear storage state here - let it expire by TTL
-        // This prevents the race where keyup fires before new tab checks
       }
     });
 
@@ -114,7 +95,6 @@ export default defineContentScript({
         if (!topEdgeExitEnabled) return;
         if (!isEnabled) return;
         if (e.clientY <= TOP_EDGE_THRESHOLD) {
-          log("TOP EDGE HIT y=" + e.clientY);
           browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
         }
       },
@@ -130,17 +110,12 @@ export default defineContentScript({
       while (node && node !== document.body) {
         const tag = node.tagName;
         if (
-          tag === "A" ||
-          tag === "BUTTON" ||
-          tag === "INPUT" ||
-          tag === "SELECT" ||
-          tag === "TEXTAREA" ||
-          tag === "LABEL" ||
+          tag === "A" || tag === "BUTTON" || tag === "INPUT" ||
+          tag === "SELECT" || tag === "TEXTAREA" || tag === "LABEL" ||
           node.getAttribute("role") === "button" ||
           node.getAttribute("role") === "link" ||
           node.isContentEditable
         ) {
-          log("interactive element blocked:", tag);
           return true;
         }
         node = node.parentElement;
@@ -222,7 +197,6 @@ export default defineContentScript({
     document.addEventListener(
       "mousedown",
       (e: MouseEvent) => {
-        // Check for MMB/Ctrl+click (new tab intent)
         const hasModifier =
           e.ctrlKey || e.metaKey || e.altKey || e.button === 1 ||
           e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Alt");
@@ -237,7 +211,7 @@ export default defineContentScript({
 
         if (!isEnabled) return;
         if (e.button !== 0) return;
-        if (isInteractive(e.target)) { log("blocked: interactive element"); return; }
+        if (isInteractive(e.target)) return;
 
         if (chargeTimer) { clearTimeout(chargeTimer); chargeTimer = null; }
 
@@ -246,17 +220,15 @@ export default defineContentScript({
         chargeCompleted = false;
 
         if (longPressDelay === 0) {
-          // Instant mode - gesture is alive, video fullscreen works here
           chargeCompleted = true;
-          doFullscreen(true);
+          doFullscreen();
         } else {
-          // Charge mode - gesture broken after setTimeout, only window fullscreen works
           showChargeRing(e.clientX, e.clientY, longPressDelay);
           chargeTimer = setTimeout(() => {
             chargeTimer = null;
             chargeCompleted = true;
             completeChargeRing();
-            doFullscreen(false);
+            doFullscreen();
           }, longPressDelay);
         }
       },
@@ -313,33 +285,28 @@ export default defineContentScript({
       browser.storage.local.remove(MMB_KEY).catch(() => {});
     });
 
-    // --- Play handler: auto-fullscreen new videos (SPA navigation signal) ---
-    document.addEventListener(
-      "play",
-      (e) => {
-        if (!isEnabled || !autoFullscreenEnabled) return;
-        if (newTabIntent) return;
+    // --- SPA URL change detection (YouTube, Odysee, etc.) ---
+    let lastKnownUrl = location.href;
 
-        const video = e.target;
-        if (!(video instanceof HTMLVideoElement)) return;
-        if (video.offsetWidth < 200 || video.offsetHeight < 150) return;
+    const checkUrlChange = () => {
+      const currentUrl = location.href;
+      if (currentUrl !== lastKnownUrl) {
+        lastKnownUrl = currentUrl;
+        if (isEnabled && autoFullscreenEnabled && autoFullscreenOnNewVideo && !newTabIntent) {
+          log("URL changed to:", currentUrl);
+          // Reset video tracking for new page
+          lastFullscreenedVideo = findMainVideo();
+          lastFullscreenedUrl = lastFullscreenedVideo?.currentSrc || lastFullscreenedVideo?.src || "";
+          doFullscreen();
+        }
+      }
+    };
 
-        const src = video.currentSrc || video.src;
-        if (!src) return;
+    // Poll for URL changes (catches SPA navigation that doesn't fire popstate)
+    setInterval(checkUrlChange, 500);
 
-        if (oneWayFullscreen && document.fullscreenElement) return;
-        if (src === lastFullscreenedUrl) return;
-
-        const elementChanged = video !== lastFullscreenedVideo;
-        if (!elementChanged && !autoFullscreenOnNewVideo) return;
-
-        lastFullscreenedVideo = video;
-        lastFullscreenedUrl = src;
-        // Auto-fullscreen on play: no gesture, use window fullscreen
-        doFullscreen(false);
-      },
-      true,
-    );
+    // Also listen for popstate (instant detection for back/forward)
+    window.addEventListener("popstate", checkUrlChange);
 
     // --- Async checks ---
 
@@ -358,7 +325,6 @@ export default defineContentScript({
       const modStored = await browser.storage.local.get(MODIFIER_KEY);
       const modEntry = modStored?.[MODIFIER_KEY];
       if (modEntry?.ts && (Date.now() - modEntry.ts) < MODIFIER_TTL) {
-        log("modifier state from storage: active");
         newTabIntent = true;
       } else if (modEntry) {
         browser.storage.local.remove(MODIFIER_KEY).catch(() => {});
@@ -383,7 +349,8 @@ export default defineContentScript({
         lastFullscreenedVideo = mainVideo;
         lastFullscreenedUrl = mainVideo.currentSrc || mainVideo.src || "";
       }
-      doFullscreen(false);
+      lastKnownUrl = location.href;
+      doFullscreen();
     }
 
     // --- Hide fullscreen exit instructions ---
@@ -406,7 +373,6 @@ export default defineContentScript({
       topEdgeExitEnabled = newValue.topEdgeExitEnabled;
       rippleEnabled = newValue.rippleEnabled;
       primaryColor = newValue.primaryColor || "#00FFFF";
-      fullscreenVideo = newValue.fullscreenVideo;
       if (!isEnabled) {
         if (settingsTimeout) clearTimeout(settingsTimeout);
         settingsTimeout = setTimeout(() => {
