@@ -130,7 +130,7 @@ unwatch();
       />
 
       <Toggle
-        label="Enter only (no exit)"
+        label="Never auto-exit on click"
         checked={!!state?.oneWayFullscreen}
         onChange={() =>
           updateState({ oneWayFullscreen: !state?.oneWayFullscreen })
@@ -146,7 +146,7 @@ unwatch();
       />
 
       <Toggle
-        label="Fullscreen video (not window)"
+        label="Fullscreen video (F key)"
         checked={!!state?.fullscreenVideo}
         onChange={() =>
           updateState({ fullscreenVideo: !state?.fullscreenVideo })
