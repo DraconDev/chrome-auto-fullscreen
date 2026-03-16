@@ -56,6 +56,68 @@ export default defineContentScript({
     let chargeStartX = 0;
     let chargeStartY = 0;
     let chargeCompleted = false;
+    let rippleEnabled = (await store.getValue()).rippleEnabled;
+    let primaryColor = (await store.getValue()).primaryColor || "#00FFFF";
+
+    // --- Charge ring element ---
+    let chargeRingEl: HTMLDivElement | null = null;
+    const CHARGE_RING_SIZE = 50;
+
+    const showChargeRing = (x: number, y: number, duration: number) => {
+      removeChargeRing();
+      if (!rippleEnabled) return;
+
+      const el = document.createElement("div");
+      const radius = CHARGE_RING_SIZE / 2;
+      const circumference = 2 * Math.PI * (radius - 3);
+
+      el.style.cssText = `
+        position: fixed;
+        left: ${x - radius}px;
+        top: ${y - radius}px;
+        width: ${CHARGE_RING_SIZE}px;
+        height: ${CHARGE_RING_SIZE}px;
+        pointer-events: none;
+        z-index: 2147483647;
+        opacity: 0.85;
+      `;
+
+      el.innerHTML = `
+        <svg width="${CHARGE_RING_SIZE}" height="${CHARGE_RING_SIZE}" viewBox="0 0 ${CHARGE_RING_SIZE} ${CHARGE_RING_SIZE}">
+          <circle cx="${radius}" cy="${radius}" r="${radius - 3}" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2.5"/>
+          <circle class="af-charge-fill" cx="${radius}" cy="${radius}" r="${radius - 3}" fill="none" stroke="${primaryColor}" stroke-width="2.5" stroke-linecap="round"
+            stroke-dasharray="${circumference}" stroke-dashoffset="${circumference}"
+            transform="rotate(-90 ${radius} ${radius})"
+            style="transition: stroke-dashoffset ${duration}ms linear"/>
+        </svg>
+      `;
+
+      document.body.appendChild(el);
+      chargeRingEl = el;
+
+      // Trigger the fill animation
+      requestAnimationFrame(() => {
+        const fill = el.querySelector(".af-charge-fill") as SVGCircleElement | null;
+        if (fill) fill.style.strokeDashoffset = "0";
+      });
+    };
+
+    const removeChargeRing = () => {
+      if (chargeRingEl) {
+        chargeRingEl.remove();
+        chargeRingEl = null;
+      }
+    };
+
+    const completeChargeRing = () => {
+      if (chargeRingEl) {
+        chargeRingEl.style.transition = "opacity 0.2s";
+        chargeRingEl.style.opacity = "0";
+        const el = chargeRingEl;
+        setTimeout(() => el.remove(), 200);
+        chargeRingEl = null;
+      }
+    };
 
     document.addEventListener(
       "mousedown",
