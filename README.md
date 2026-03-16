@@ -52,11 +52,13 @@ npm run build
 
 ## Settings
 
-- **Enabled** — Toggle the extension on/off
-- **Auto-Fullscreen on Load** — Automatically fullscreen when a page loads
-- **Long Press Delay** — How long to hold click before fullscreen (0 = instant, default 200ms)
-- **Enter Only** — One-way fullscreen: extension enters fullscreen but never exits it
-- **Fullscreen on New Video** — Auto-fullscreen on SPA navigation (YouTube, Odysee)
+- **Enable Extension** — Toggle the extension on/off
+- **Auto-Fullscreen on Load** — Automatically fullscreen when any page loads
+- **Block on buttons/links** — Don't fullscreen when clicking interactive elements
+- **Exit on top edge** — Move cursor to top edge to exit fullscreen
+- **Enter only** — One-way fullscreen: extension enters fullscreen but never exits it
+- **Fullscreen on navigation** — Auto-fullscreen on SPA navigation (YouTube, Odysee). Detects content changes via video playback.
+- **Charge Time** — How long to hold click before fullscreen (0 = instant, default 200ms)
 
 ## Permissions
 
