@@ -15,11 +15,11 @@ export default defineBackground({
       if (message.action === "getModifierState") {
         sendResponse({ ctrlHeld });
         // BUG FIX: Delay reset to handle multiple tabs opening simultaneously
-        // Without this, only the first tab to query gets the modifier state
+        // and slow-loading content scripts. 3s gives plenty of time.
         if (ctrlResetTimeout) clearTimeout(ctrlResetTimeout);
         ctrlResetTimeout = setTimeout(() => {
           ctrlHeld = false;
-        }, 500);
+        }, 3000);
         return true;
       }
 

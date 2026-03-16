@@ -54,14 +54,19 @@ export default defineContentScript({
     // --- Persist MMB/Ctrl+click state across content script reloads ---
     // Chrome unloads content scripts under memory pressure (after many tabs).
     // Without persistence, newTabIntent resets to false and fullscreen triggers.
-    // Set on MMB/Ctrl+click, cleared only on navigation.
+    // Stores { url, ts } so stale flags from previous pages are ignored.
     const MMB_KEY = "af_mmb_intent";
 
-    // Check persisted state
+    // Check persisted state - only honor if same URL (stale flags from previous
+    // pages must be ignored, otherwise navigating to a new site won't fullscreen)
     try {
       const stored = await browser.storage.local.get(MMB_KEY);
-      if (stored?.[MMB_KEY]) {
+      const entry = stored?.[MMB_KEY];
+      if (entry?.url === location.href) {
         newTabIntent = true;
+      } else if (entry) {
+        // Stale flag from different page - clear it
+        browser.storage.local.remove(MMB_KEY).catch(() => {});
       }
     } catch {}
 
@@ -76,9 +81,10 @@ export default defineContentScript({
           e.button === 1
         ) {
           newTabIntent = true;
-          // Persist to survive content script reloads
+          // Persist to survive content script reloads.
+          // Store URL so stale flags from previous pages are ignored.
           browser.storage.local
-            .set({ [MMB_KEY]: true })
+            .set({ [MMB_KEY]: { url: location.href, ts: Date.now() } })
             .catch(() => {});
           browser.runtime.sendMessage({ action: "setModifiers", ctrl: true });
         }
