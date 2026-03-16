@@ -264,27 +264,6 @@ export default defineContentScript({
       true,
     );
 
-    // Navigation resets
-    window.addEventListener("popstate", () => {
-      newTabIntent = false;
-      browser.storage.local.remove(MMB_KEY).catch(() => {});
-    });
-    const origPushState = history.pushState;
-    const origReplaceState = history.replaceState;
-    history.pushState = function (...args) {
-      origPushState.apply(this, args);
-      newTabIntent = false;
-      browser.storage.local.remove(MMB_KEY).catch(() => {});
-    };
-    history.replaceState = function (...args) {
-      origReplaceState.apply(this, args);
-      newTabIntent = false;
-      browser.storage.local.remove(MMB_KEY).catch(() => {});
-    };
-    window.addEventListener("beforeunload", () => {
-      browser.storage.local.remove(MMB_KEY).catch(() => {});
-    });
-
     // --- SPA URL change detection (YouTube, Odysee, etc.) ---
     let lastKnownUrl = location.href;
 
@@ -294,19 +273,33 @@ export default defineContentScript({
         lastKnownUrl = currentUrl;
         if (isEnabled && autoFullscreenEnabled && autoFullscreenOnNewVideo && !newTabIntent) {
           log("URL changed to:", currentUrl);
-          // Reset video tracking for new page
           lastFullscreenedVideo = findMainVideo();
           lastFullscreenedUrl = lastFullscreenedVideo?.currentSrc || lastFullscreenedVideo?.src || "";
           doFullscreen();
         }
       }
+      newTabIntent = false;
+      browser.storage.local.remove(MMB_KEY).catch(() => {});
     };
 
     // Poll for URL changes (catches SPA navigation that doesn't fire popstate)
     setInterval(checkUrlChange, 500);
 
-    // Also listen for popstate (instant detection for back/forward)
+    // Navigation resets + URL check
     window.addEventListener("popstate", checkUrlChange);
+    const origPushState = history.pushState;
+    const origReplaceState = history.replaceState;
+    history.pushState = function (...args) {
+      origPushState.apply(this, args);
+      checkUrlChange();
+    };
+    history.replaceState = function (...args) {
+      origReplaceState.apply(this, args);
+      checkUrlChange();
+    };
+    window.addEventListener("beforeunload", () => {
+      browser.storage.local.remove(MMB_KEY).catch(() => {});
+    });
 
     // --- Async checks ---
 
