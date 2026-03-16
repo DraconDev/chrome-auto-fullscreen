@@ -10,6 +10,21 @@ export default defineContentScript({
     // --- New tab detection (for initial load) ---
     let newTabIntent = false;
 
+    // Check if modifier keys are physically held RIGHT NOW (synchronous, before any async).
+    // This catches the case where Ctrl is held while the page loads (e.g., Ctrl+click
+    // opened this tab, or Ctrl is still held from the originating page).
+    try {
+      const testEvent = new KeyboardEvent("keydown", { key: "a" });
+      if (
+        testEvent.getModifierState("Control") ||
+        testEvent.getModifierState("Meta") ||
+        testEvent.getModifierState("Alt")
+      ) {
+        newTabIntent = true;
+      }
+    } catch {}
+
+    // Also check background for modifier state set by the originating page
     for (let i = 0; i < 5; i++) {
       const resp = await browser.runtime.sendMessage({
         action: "getModifierState",
