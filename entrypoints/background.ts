@@ -44,10 +44,14 @@ export default defineBackground({
       }
 
       if (message.action === "exitWindowFullscreen") {
+        console.log("[AF BG] exitWindowFullscreen received, state:", "checking...");
         chrome.windows.getCurrent((win) => {
+          console.log("[AF BG] window state:", win.state);
           if (win.id === undefined) return;
           if (win.state === "fullscreen") {
-            chrome.windows.update(win.id, { state: "normal" });
+            chrome.windows.update(win.id, { state: "normal" }, () => {
+              console.log("[AF BG] exited, error:", chrome.runtime.lastError?.message || "none");
+            });
           }
         });
         return false;
