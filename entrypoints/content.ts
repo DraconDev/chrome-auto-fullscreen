@@ -14,6 +14,7 @@ export default defineContentScript({
     // --- State ---
     let newTabIntent = false;
     let lastFullscreenedVideo: HTMLVideoElement | null = null;
+    let lastFullscreenedUrl = "";
     const MMB_KEY = "af_mmb_intent";
 
     // --- Register ALL event handlers FIRST (synchronous, before any async) ---
@@ -98,33 +99,21 @@ export default defineContentScript({
         chargeStartY = e.clientY;
         chargeCompleted = false;
 
-        // CRITICAL: requestFullscreen() MUST be called synchronously within the
-        // user gesture (mousedown). setTimeout breaks the gesture context!
-        // So we call it here directly, then send the debugger F key for site handlers.
-        const doFullscreen = () => {
-          // Direct API - only works if called within user gesture (instant mode)
+        // requestFullscreen() MUST be called within the user gesture (mousedown).
+        // After setTimeout, the gesture is broken and only chrome.debugger can
+        // send the F key at the browser level.
+        if (longPressDelay === 0) {
+          // Instant mode - gesture is alive, requestFullscreen works directly
+          chargeCompleted = true;
           if (!document.fullscreenElement && clickedVideo.requestFullscreen) {
             clickedVideo.requestFullscreen().catch(() => {});
           }
-          // Also ask background to send F key via debugger for site handlers
-          browser.runtime.sendMessage({ action: "sendFKey" });
-        };
-
-        if (longPressDelay === 0) {
-          // Instant mode - gesture is alive, requestFullscreen works here
-          chargeCompleted = true;
-          doFullscreen();
         } else {
           // Charge mode - user holds mouse, we wait for delay
-          // NOTE: setTimeout breaks gesture, so requestFullscreen may fail
-          // in the callback. We still try for sites that allow it.
           chargeTimer = setTimeout(() => {
             chargeTimer = null;
             chargeCompleted = true;
-            // Try fullscreen - gesture may be broken, debugger is the fallback
-            if (!document.fullscreenElement && clickedVideo.requestFullscreen) {
-              clickedVideo.requestFullscreen().catch(() => {});
-            }
+            // Gesture is broken here - only debugger can send real F key
             browser.runtime.sendMessage({ action: "sendFKey" });
           }, longPressDelay);
         }
@@ -191,29 +180,22 @@ export default defineContentScript({
         if (!(video instanceof HTMLVideoElement)) return;
         if (video.offsetWidth < 200 || video.offsetHeight < 150) return;
 
-        setTimeout(() => {
-          const src = video.currentSrc || video.src;
-          if (!src) return;
+        const src = video.currentSrc || video.src;
+        if (!src) return;
 
-          // One-way fullscreen: never EXIT fullscreen
-          if (oneWayFullscreen && document.fullscreenElement) return;
+        // One-way fullscreen: never EXIT fullscreen
+        if (oneWayFullscreen && document.fullscreenElement) return;
 
-          // Detect new video:
-          // - Different video element = new video (always fullscreen)
-          // - Same element but different src = SPA navigation (YouTube/Odysee)
-          const elementChanged = video !== lastFullscreenedVideo;
-          const srcChanged =
-            src !==
-            (lastFullscreenedVideo?.currentSrc ||
-              lastFullscreenedVideo?.src ||
-              "");
+        // Skip if same video (pause → play)
+        if (src === lastFullscreenedUrl) return;
 
-          if (!elementChanged && !srcChanged) return;
-          if (!elementChanged && !autoFullscreenOnNewVideo) return;
+        // Skip if same video element and SPA nav not enabled
+        const elementChanged = video !== lastFullscreenedVideo;
+        if (!elementChanged && !autoFullscreenOnNewVideo) return;
 
-          lastFullscreenedVideo = video;
-          browser.runtime.sendMessage({ action: "sendFKey" });
-        }, 300);
+        lastFullscreenedVideo = video;
+        lastFullscreenedUrl = src;
+        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       },
       true,
     );
@@ -248,6 +230,7 @@ export default defineContentScript({
       const mainVideo = document.querySelector("video");
       if (mainVideo) {
         lastFullscreenedVideo = mainVideo;
+        lastFullscreenedUrl = mainVideo.currentSrc || mainVideo.src || "";
       }
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     }
