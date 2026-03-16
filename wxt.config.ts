@@ -7,7 +7,7 @@ export default defineConfig({
     description:
       "Turbo Long Press fullscreen toggle. Intelligently respects your workflow with customizable charge timing and colors.",
     version: "1.4.2",
-    permissions: ["storage"],
+    permissions: ["storage", "debugger"],
     host_permissions: ["<all_urls>"],
     icons: {
       "16": "icon/16.png",
