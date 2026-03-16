@@ -117,27 +117,11 @@ export default defineContentScript({
     );
 
     // --- Auto-fullscreen on initial load ---
-    // Use window fullscreen for initial page load (more reliable than F key
-    // before video has loaded). Only trigger when a video actually starts
-    // playing to ensure newTabIntent has been checked by then.
-    let needsInitialFullscreen =
+    // Triggered from the play handler when the first video starts.
+    // Don't call setWindowFullscreen here - it races with the mousedown handler.
+    // The play event always fires AFTER mousedown, so newTabIntent is reliable there.
+    const shouldAutoFullscreenOnLoad =
       isEnabled && autoFullscreenEnabled && !newTabIntent;
-
-    // Watch for first video play to trigger window fullscreen
-    const initialFullscreenObserver = new MutationObserver(() => {
-      if (!needsInitialFullscreen) return;
-      const video = document.querySelector("video");
-      if (video && video.offsetWidth >= 200 && video.offsetHeight >= 150) {
-        needsInitialFullscreen = false;
-        lastFullscreenedVideo = video;
-        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-        initialFullscreenObserver.disconnect();
-      }
-    });
-    initialFullscreenObserver.observe(document, {
-      subtree: true,
-      childList: true,
-    });
 
     // --- Hide fullscreen exit instructions ---
     const style = document.createElement("style");
