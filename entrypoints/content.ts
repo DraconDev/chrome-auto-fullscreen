@@ -189,6 +189,7 @@ export default defineContentScript({
           log("charge cancelled: mouse moved too far");
           clearTimeout(chargeTimer);
           chargeTimer = null;
+          removeChargeRing();
         }
       },
       true,
@@ -202,6 +203,7 @@ export default defineContentScript({
           log("charge cancelled: mouse released early");
           clearTimeout(chargeTimer);
           chargeTimer = null;
+          removeChargeRing();
         }
       },
       true,
