@@ -146,7 +146,7 @@ unwatch();
       />
 
       <Toggle
-        label="Fullscreen video (F key)"
+        label="Fullscreen video on click (F key)"
         checked={!!state?.fullscreenVideo}
         onChange={() =>
           updateState({ fullscreenVideo: !state?.fullscreenVideo })
