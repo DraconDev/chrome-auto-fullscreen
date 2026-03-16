@@ -88,6 +88,7 @@ export default defineContentScript({
           node.getAttribute("role") === "link" ||
           node.isContentEditable
         ) {
+          log("interactive element blocked:", tag, node);
           return true;
         }
         node = node.parentElement;
