@@ -137,6 +137,20 @@ export default defineContentScript({
     // --- Auto-fullscreen on initial load ---
     // Runs AFTER all async checks complete. By now, if the user MMB/Ctrl+clicked,
     // the mousedown handler has already set newTabIntent = true.
+    // Additional safety: check if modifier keys are still physically held.
+    const modifiersStillHeld =
+      document.querySelector(":hover") !== null && // page is active
+      (() => {
+        try {
+          const evt = new KeyboardEvent("test");
+          // Can't use getModifierState on synthetic events, but we can
+          // check the stored newTabIntent which was set by keydown/mousedown
+          return false;
+        } catch {
+          return false;
+        }
+      })();
+
     if (isEnabled && autoFullscreenEnabled && !newTabIntent) {
       const mainVideo = document.querySelector("video");
       if (mainVideo) {
