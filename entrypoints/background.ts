@@ -3,8 +3,18 @@ import { defineBackground } from "wxt/sandbox";
 export default defineBackground({
   main() {
     let ctrlHeld = false;
-    // Don't reset immediately - use timeout to handle multi-tab race
     let ctrlResetTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    // Track which tabs have debugger attached (avoid re-attaching = no notification spam)
+    const debuggerAttached = new Set<number>();
+
+    // Clean up when tabs close
+    chrome.tabs.onRemoved.addListener((tabId) => {
+      if (debuggerAttached.has(tabId)) {
+        chrome.debugger.detach({ tabId }).catch(() => {});
+        debuggerAttached.delete(tabId);
+      }
+    });
 
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === "setModifiers") {
@@ -14,8 +24,6 @@ export default defineBackground({
 
       if (message.action === "getModifierState") {
         sendResponse({ ctrlHeld });
-        // BUG FIX: Delay reset to handle multiple tabs opening simultaneously
-        // and slow-loading content scripts. 3s gives plenty of time.
         if (ctrlResetTimeout) clearTimeout(ctrlResetTimeout);
         ctrlResetTimeout = setTimeout(() => {
           ctrlHeld = false;
@@ -27,10 +35,7 @@ export default defineBackground({
         const tabId = sender.tab?.id;
         if (!tabId) return false;
 
-        // BUG FIX: Wait for debugger attach to complete before sending keys
-        chrome.debugger.attach({ tabId }, "1.3", () => {
-          if (chrome.runtime.lastError) return;
-
+        const sendFKeyCommands = () => {
           chrome.debugger.sendCommand(
             { tabId },
             "Input.dispatchKeyEvent",
@@ -52,13 +57,22 @@ export default defineBackground({
                   windowsVirtualKeyCode: 70,
                   nativeVirtualKeyCode: 70,
                 },
-                () => {
-                  setTimeout(() => chrome.debugger.detach({ tabId }), 500);
-                },
               );
             },
           );
-        });
+        };
+
+        if (debuggerAttached.has(tabId)) {
+          // Already attached - just send keys (no notification)
+          sendFKeyCommands();
+        } else {
+          // First time - attach (shows notification once), then send keys
+          chrome.debugger.attach({ tabId }, "1.3", () => {
+            if (chrome.runtime.lastError) return;
+            debuggerAttached.add(tabId);
+            sendFKeyCommands();
+          });
+        }
         return false;
       }
 

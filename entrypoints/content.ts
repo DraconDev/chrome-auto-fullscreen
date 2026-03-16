@@ -49,7 +49,7 @@ export default defineContentScript({
     let chargeTimer: ReturnType<typeof setTimeout> | null = null;
     let chargeStartX = 0;
     let chargeStartY = 0;
-    let chargeButton = -1;
+    let chargeCompleted = false;
 
     document.addEventListener(
       "mousedown",
@@ -76,27 +76,73 @@ export default defineContentScript({
         // --- Charge / long-press to fullscreen ---
         if (!isEnabled) return;
         if (e.button !== 0) return; // Only left click
-        if (newTabIntent) return;
 
-        // Clear any existing timer
+        // Check if clicking ON a main player video
+        let clickTarget = e.target as HTMLElement | null;
+        while (clickTarget && !(clickTarget instanceof HTMLVideoElement)) {
+          clickTarget = clickTarget.parentElement;
+        }
+        const clickedVideo =
+          clickTarget instanceof HTMLVideoElement ? clickTarget : null;
+        if (!clickedVideo) return;
+        if (clickedVideo.offsetWidth < 300 || clickedVideo.offsetHeight < 200)
+          return;
+
+        // Cancel any existing charge
         if (chargeTimer) {
           clearTimeout(chargeTimer);
           chargeTimer = null;
         }
 
-        // Record start position (cancel if mouse moves too far)
         chargeStartX = e.clientX;
         chargeStartY = e.clientY;
-        chargeButton = e.button;
+        chargeCompleted = false;
+
+        // Dispatch F key event directly (works within user gesture, no debugger needed)
+        // This triggers the site's own fullscreen handler (YouTube, Odysee, etc.)
+        const sendFKeyLocal = () => {
+          // Method 1: Dispatch F key on document
+          const fDown = new KeyboardEvent("keydown", {
+            key: "f",
+            code: "KeyF",
+            keyCode: 70,
+            which: 70,
+            bubbles: true,
+            cancelable: true,
+          });
+          document.dispatchEvent(fDown);
+
+          // Method 2: Try clicking the fullscreen button (more reliable on some sites)
+          const fullscreenBtn = document.querySelector(
+            [
+              ".ytp-fullscreen-button", // YouTube
+              ".vjs-fullscreen-control", // Video.js (Odysee)
+              '[title*="ullscreen"]', // Generic title match
+              '[aria-label*="ullscreen"]', // Generic aria match
+              ".fullscreen-button",
+              '[data-purpose="fullscreen-button"]',
+            ].join(", "),
+          ) as HTMLElement | null;
+          if (fullscreenBtn) {
+            fullscreenBtn.click();
+          }
+
+          // Method 3: Direct API fallback
+          if (!document.fullscreenElement && clickedVideo.requestFullscreen) {
+            clickedVideo.requestFullscreen().catch(() => {});
+          }
+        };
 
         if (longPressDelay === 0) {
-          // Instant click mode - send F immediately
-          browser.runtime.sendMessage({ action: "sendFKey" });
+          // Instant mode
+          chargeCompleted = true;
+          sendFKeyLocal();
         } else {
           // Charge mode - wait for long press
           chargeTimer = setTimeout(() => {
             chargeTimer = null;
-            browser.runtime.sendMessage({ action: "sendFKey" });
+            chargeCompleted = true;
+            sendFKeyLocal();
           }, longPressDelay);
         }
       },
@@ -110,7 +156,7 @@ export default defineContentScript({
         if (!chargeTimer) return;
         const dx = Math.abs(e.clientX - chargeStartX);
         const dy = Math.abs(e.clientY - chargeStartY);
-        if (dx > 10 || dy > 10) {
+        if (dx > 50 || dy > 50) {
           clearTimeout(chargeTimer);
           chargeTimer = null;
         }
