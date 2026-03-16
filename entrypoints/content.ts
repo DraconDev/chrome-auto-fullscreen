@@ -90,6 +90,7 @@ export default defineContentScript({
       "play",
       (e) => {
         if (!isEnabled || !autoFullscreenEnabled) return;
+        if (newTabIntent) return;
 
         const video = e.target;
         if (!(video instanceof HTMLVideoElement)) return;
@@ -99,9 +100,6 @@ export default defineContentScript({
         setTimeout(() => {
           const src = video.currentSrc || video.src;
           if (!src) return;
-
-          // Skip if MMB/Ctrl+click opened a new tab
-          if (newTabIntent) return;
 
           // Same video element = pause/play on existing video, skip
           if (video === lastFullscreenedVideo) return;
@@ -119,13 +117,27 @@ export default defineContentScript({
     );
 
     // --- Auto-fullscreen on initial load ---
-    if (isEnabled && autoFullscreenEnabled && !newTabIntent) {
-      const mainVideo = document.querySelector("video");
-      if (mainVideo) {
-        lastFullscreenedVideo = mainVideo;
+    // Use window fullscreen for initial page load (more reliable than F key
+    // before video has loaded). Only trigger when a video actually starts
+    // playing to ensure newTabIntent has been checked by then.
+    let needsInitialFullscreen =
+      isEnabled && autoFullscreenEnabled && !newTabIntent;
+
+    // Watch for first video play to trigger window fullscreen
+    const initialFullscreenObserver = new MutationObserver(() => {
+      if (!needsInitialFullscreen) return;
+      const video = document.querySelector("video");
+      if (video && video.offsetWidth >= 200 && video.offsetHeight >= 150) {
+        needsInitialFullscreen = false;
+        lastFullscreenedVideo = video;
+        browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+        initialFullscreenObserver.disconnect();
       }
-      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-    }
+    });
+    initialFullscreenObserver.observe(document, {
+      subtree: true,
+      childList: true,
+    });
 
     // --- Hide fullscreen exit instructions ---
     const style = document.createElement("style");
