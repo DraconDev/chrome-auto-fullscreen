@@ -57,12 +57,7 @@ export default defineContentScript({
     const enterFullscreenFromClick = () => {
       isFullscreen = true;
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-      if (videoFullscreen) {
-        sendFKey();
-        // YouTube adds fs=1 to URL when video fullscreen. Delay update so poller
-        // sees the change as ours, not a new navigation.
-        setTimeout(() => { lastKnownUrl = location.href; }, 800);
-      }
+      if (videoFullscreen) sendFKey();
     };
 
     // --- Exit fullscreen: window ---
@@ -232,9 +227,32 @@ export default defineContentScript({
     // --- SPA URL change detection ---
     let lastKnownUrl = location.href;
 
+    // Compare URLs ignoring fullscreen-related params (YouTube adds fs=1)
+    const urlChanged = (a: string, b: string): boolean => {
+      if (a === b) return false;
+      try {
+        const ua = new URL(a, location.origin);
+        const ub = new URL(b, location.origin);
+        // Same path and hostname?
+        if (ua.hostname !== ub.hostname || ua.pathname !== ub.pathname) return true;
+        // Compare search params, ignoring fullscreen-related ones
+        const skip = new Set(["fs", "fs_mode", "fullscreen"]);
+        const pa = new URLSearchParams(ua.search);
+        const pb = new URLSearchParams(ub.search);
+        const keys = new Set([...pa.keys(), ...pb.keys()]);
+        for (const k of keys) {
+          if (skip.has(k)) continue;
+          if (pa.get(k) !== pb.get(k)) return true;
+        }
+        return false;
+      } catch {
+        return a !== b;
+      }
+    };
+
     const checkUrlChange = () => {
       const currentUrl = location.href;
-      if (currentUrl !== lastKnownUrl) {
+      if (urlChanged(lastKnownUrl, currentUrl)) {
         lastKnownUrl = currentUrl;
         if (isEnabled && autoFullscreenEnabled && autoFullscreenOnNewVideo && !newTabIntent) {
           lastFullscreenedVideo = findMainVideo();
@@ -242,6 +260,8 @@ export default defineContentScript({
           enterFullscreen();
         }
       }
+      // Always update tracker (catches fullscreen param changes)
+      lastKnownUrl = currentUrl;
       newTabIntent = false;
       browser.storage.local.remove(MMB_KEY).catch(() => {});
     };
