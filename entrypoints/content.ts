@@ -60,7 +60,8 @@ export default defineContentScript({
       (e: MouseEvent) => {
         if (!topEdgeExitEnabled) return;
         if (!isEnabled) return;
-        if (oneWayFullscreen) return;
+        // NOTE: oneWayFullscreen does NOT block manual exit via top edge.
+        // It only prevents auto-exit on navigation (handled in play handler).
         if (e.clientY <= TOP_EDGE_THRESHOLD) {
           log("TOP EDGE HIT y=" + e.clientY);
           browser.runtime.sendMessage({ action: "exitWindowFullscreen" });

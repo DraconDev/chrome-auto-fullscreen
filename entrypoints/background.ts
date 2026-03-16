@@ -14,9 +14,10 @@ export default defineBackground({
       if (message.action === "getModifierState") {
         sendResponse({ ctrlHeld });
         if (ctrlResetTimeout) clearTimeout(ctrlResetTimeout);
+        // Keep modifier state alive for 10s so new tabs opened via Ctrl+click can read it
         ctrlResetTimeout = setTimeout(() => {
           ctrlHeld = false;
-        }, 3000);
+        }, 10000);
         return true;
       }
 
