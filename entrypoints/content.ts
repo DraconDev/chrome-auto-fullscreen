@@ -18,6 +18,7 @@ export default defineContentScript({
     let topEdgeExitEnabled = s.topEdgeExitEnabled;
     let rippleEnabled = s.rippleEnabled;
     let primaryColor = s.primaryColor || "#00FFFF";
+    let fullscreenVideo = s.fullscreenVideo;
 
     // --- State ---
     let newTabIntent = false;
@@ -41,7 +42,17 @@ export default defineContentScript({
     };
 
     // --- Helper: do fullscreen ---
-    const doFullscreen = () => {
+    // hasGesture=true means we're in a mousedown handler and requestFullscreen() will work
+    const doFullscreen = (hasGesture = false) => {
+      if (fullscreenVideo && hasGesture) {
+        const video = findMainVideo();
+        if (video && !document.fullscreenElement) {
+          video.requestFullscreen().catch(() => {
+            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+          });
+          return;
+        }
+      }
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     };
 
