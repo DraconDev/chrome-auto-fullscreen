@@ -60,7 +60,8 @@ export default defineContentScript({
         if (!topEdgeExitEnabled) return;
         if (!isEnabled) return;
         if (oneWayFullscreen) return;
-        if (e.clientY <= TOP_EDGE_THRESHOLD && chrome.windows) {
+        if (e.clientY <= TOP_EDGE_THRESHOLD) {
+          log("TOP EDGE HIT y=" + e.clientY + " - sending exitWindowFullscreen");
           browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
         }
       },
