@@ -7,6 +7,8 @@ export type AppState = {
   primaryColor: string;
   topEdgeExitEnabled: boolean;
   autoFullscreenEnabled: boolean;
+  oneWayFullscreen: boolean;
+  autoFullscreenOnNewVideo: boolean;
 };
 
 export type Store = AppState & {
