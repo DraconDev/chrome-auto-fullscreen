@@ -110,7 +110,14 @@ export default defineContentScript({
           // Different video element = new video, fullscreen
           lastFullscreenedVideo = video;
 
-          browser.runtime.sendMessage({ action: "sendFKey" });
+          // First video on page load → window fullscreen
+          // Subsequent videos → F key (video player fullscreen)
+          if (shouldAutoFullscreenOnLoad) {
+            shouldAutoFullscreenOnLoad = false;
+            browser.runtime.sendMessage({ action: "setWindowFullscreen" });
+          } else {
+            browser.runtime.sendMessage({ action: "sendFKey" });
+          }
         }, 300);
       },
       true,
