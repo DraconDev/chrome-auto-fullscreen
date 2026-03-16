@@ -47,12 +47,19 @@ export default defineContentScript({
     document.addEventListener(
       "mousedown",
       (e: MouseEvent) => {
-        if (
+        // Use BOTH e.ctrlKey AND getModifierState for maximum reliability.
+        // e.ctrlKey reflects the event's modifier state.
+        // getModifierState checks the physical key state (more reliable in some cases).
+        const hasModifier =
           e.ctrlKey ||
           e.metaKey ||
           e.altKey ||
-          e.button === 1
-        ) {
+          e.button === 1 ||
+          e.getModifierState("Control") ||
+          e.getModifierState("Meta") ||
+          e.getModifierState("Alt");
+
+        if (hasModifier) {
           newTabIntent = true;
           browser.storage.local
             .set({ [MMB_KEY]: { url: location.href } })
