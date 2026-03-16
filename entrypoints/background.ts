@@ -5,6 +5,11 @@ export default defineBackground({
     let ctrlHeld = false;
     let ctrlResetTimeout: ReturnType<typeof setTimeout> | null = null;
 
+    const debuggerAttached = new Set<number>();
+    chrome.tabs.onRemoved.addListener((tabId) => {
+      debuggerAttached.delete(tabId);
+    });
+
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === "setModifiers") {
         ctrlHeld = message.ctrl || message.meta || false;
@@ -16,6 +21,31 @@ export default defineBackground({
         if (ctrlResetTimeout) clearTimeout(ctrlResetTimeout);
         ctrlResetTimeout = setTimeout(() => { ctrlHeld = false; }, 10000);
         return true;
+      }
+
+      if (message.action === "sendFKey") {
+        const tabId = sender.tab?.id;
+        if (!tabId) return false;
+
+        const sendKey = () => {
+          chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent",
+            { type: "keyDown", key: "f", code: "KeyF", windowsVirtualKeyCode: 70, nativeVirtualKeyCode: 70 },
+            () => {
+              chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent",
+                { type: "keyUp", key: "f", code: "KeyF", windowsVirtualKeyCode: 70, nativeVirtualKeyCode: 70 });
+            });
+        };
+
+        if (debuggerAttached.has(tabId)) {
+          sendKey();
+        } else {
+          chrome.debugger.attach({ tabId }, "1.3", () => {
+            if (chrome.runtime.lastError) return;
+            debuggerAttached.add(tabId);
+            sendKey();
+          });
+        }
+        return false;
       }
 
       if (message.action === "toggleWindowFullscreen") {
