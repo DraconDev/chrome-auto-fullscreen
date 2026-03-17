@@ -13,6 +13,7 @@ export const defaultStore: Store = {
   autoFullscreenEnabled: true,
   oneWayFullscreen: false,
   autoFullscreenOnNewVideo: true,
+  autoVideoFullscreen: false,
 };
 
 export const store = storage.defineItem<Store>("sync:store", {

@@ -9,6 +9,7 @@ export type AppState = {
   autoFullscreenEnabled: boolean;
   oneWayFullscreen: boolean;
   autoFullscreenOnNewVideo: boolean;
+  autoVideoFullscreen: boolean;
 };
 
 export type Store = AppState & {
