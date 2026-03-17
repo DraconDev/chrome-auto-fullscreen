@@ -170,7 +170,7 @@ function App() {
       {/* Footer */}
       <footer className="border-t border-white/[0.06] mt-8">
         <div className="max-w-2xl mx-auto px-6 py-5 flex justify-between items-center text-sm text-gray-600">
-          <span>Auto Fullscreen v1.5</span>
+          <span>Auto Fullscreen v2.0</span>
           <a href="https://ko-fi.com/adamdracon" target="_blank" rel="noopener noreferrer"
             className="hover:text-gray-400 transition-colors">
             Support
