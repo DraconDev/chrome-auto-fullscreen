@@ -47,18 +47,15 @@ export default defineContentScript({
       if (videoFullscreen) browser.runtime.sendMessage({ action: "sendFKey" });
     };
 
-    // --- Enter fullscreen: window only ---
+    // --- Enter fullscreen: window + F key for video ---
     const enterFullscreen = () => {
-      isFullscreen = true;
-      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-    };
-
-    // --- Enter fullscreen from click: window + F key for video ---
-    const enterFullscreenFromClick = () => {
       isFullscreen = true;
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       if (videoFullscreen) sendFKey();
     };
+
+    // --- Enter fullscreen from click (same as enterFullscreen) ---
+    const enterFullscreenFromClick = enterFullscreen;
 
     // --- Exit fullscreen: window ---
     const exitFullscreen = () => {
