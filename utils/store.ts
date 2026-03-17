@@ -5,7 +5,6 @@ export const defaultStore: Store = {
   env: "",
   enabled: true,
   rippleEnabled: true,
-  smartCursorEnabled: true,
   strictSafety: true,
   longPressDelay: 200,
   primaryColor: "#00FFFF",

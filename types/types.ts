@@ -1,7 +1,6 @@
 export type AppState = {
   enabled: boolean;
   rippleEnabled: boolean;
-  smartCursorEnabled: boolean;
   strictSafety: boolean;
   longPressDelay: number;
   primaryColor: string;
