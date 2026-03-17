@@ -228,6 +228,8 @@ export default defineContentScript({
         lastKnownUrl = currentUrl;
         if (isEnabled && autoFullscreenEnabled && autoFullscreenOnNewVideo && !newTabIntent) {
           enterFullscreen();
+          // Try clicking the site's fullscreen button after player loads
+          setTimeout(clickSiteFullscreenButton, 1500);
         }
       }
       lastKnownUrl = currentUrl;
