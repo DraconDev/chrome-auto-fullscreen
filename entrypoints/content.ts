@@ -44,11 +44,17 @@ export default defineContentScript({
 
     // --- Send F key to fullscreen the video element ---
     const sendFKey = () => {
-      if (videoFullscreen) browser.runtime.sendMessage({ action: "sendFKey" });
+      if (videoFullscreen) {
+        console.log("[AF] sending F key, videoFullscreen=", videoFullscreen);
+        browser.runtime.sendMessage({ action: "sendFKey" });
+      } else {
+        console.log("[AF] F key SKIPPED, videoFullscreen=", videoFullscreen);
+      }
     };
 
     // --- Enter fullscreen: window + F key for video ---
     const enterFullscreen = () => {
+      console.log("[AF] enterFullscreen(), videoFullscreen=", videoFullscreen);
       isFullscreen = true;
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
       if (videoFullscreen) sendFKey();
