@@ -12,6 +12,7 @@ export default defineContentScript({
     let autoFullscreenEnabled = s.autoFullscreenEnabled;
     let neverAutoExit = s.oneWayFullscreen;
     let autoFullscreenOnNewVideo = s.autoFullscreenOnNewVideo;
+    let autoVideoFullscreen = s.autoVideoFullscreen;
     let strictSafety = s.strictSafety;
     let longPressDelay = s.longPressDelay;
     let topEdgeExitEnabled = s.topEdgeExitEnabled;
@@ -228,8 +229,10 @@ export default defineContentScript({
         lastKnownUrl = currentUrl;
         if (isEnabled && autoFullscreenEnabled && autoFullscreenOnNewVideo && !newTabIntent) {
           enterFullscreen();
-          // Try clicking the site's fullscreen button after player loads
-          setTimeout(clickSiteFullscreenButton, 1500);
+          // Optionally try clicking the site's fullscreen button
+          if (autoVideoFullscreen) {
+            setTimeout(clickSiteFullscreenButton, 1500);
+          }
         }
       }
       lastKnownUrl = currentUrl;
