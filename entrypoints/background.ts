@@ -10,6 +10,11 @@ export default defineBackground({
       debuggerAttached.delete(tabId);
     });
 
+    // Click extension icon → open settings page
+    chrome.action.onClicked.addListener(() => {
+      chrome.tabs.create({ url: chrome.runtime.getURL("/settings.html") });
+    });
+
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === "setModifiers") {
         ctrlHeld = message.ctrl || message.meta || false;
