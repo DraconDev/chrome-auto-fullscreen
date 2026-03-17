@@ -1,4 +1,4 @@
-# Auto Fullscreen
+# Auto Fullscreen - Fullscreen Any Page
 
 Auto fullscreen any page on load, navigation, or click-and-hold. Works everywhere - not just videos.
 
