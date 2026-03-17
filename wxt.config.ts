@@ -3,7 +3,7 @@ import { defineConfig } from "wxt";
 export default defineConfig({
   extensionApi: "chrome",
   manifest: {
-    name: "Auto Fullscreen",
+    name: "Auto Fullscreen - Fullscreen Any Page",
     description:
       "Auto fullscreen any page on load, navigation, or click-and-hold. Works everywhere - not just videos.",
     version: "2.0.0",
