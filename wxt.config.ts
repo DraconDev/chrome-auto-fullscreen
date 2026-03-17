@@ -5,8 +5,8 @@ export default defineConfig({
   manifest: {
     name: "Auto Fullscreen",
     description:
-      "Turbo Long Press fullscreen toggle. Intelligently respects your workflow with customizable charge timing and colors.",
-    version: "1.4.2",
+      "Auto fullscreen any page on load, navigation, or click-and-hold charge.",
+    version: "2.0.0",
     permissions: ["storage"],
     host_permissions: ["<all_urls>"],
     icons: {
