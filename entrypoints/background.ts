@@ -56,7 +56,10 @@ export default defineBackground({
         const tabId = sender.tab?.id;
         if (!tabId) return false;
 
+        console.log("[AF BG] sendFKey for tab", tabId);
+
         const sendKey = () => {
+          console.log("[AF BG] sending F key to tab", tabId);
           chrome.debugger.sendCommand({ tabId }, "Input.dispatchKeyEvent",
             { type: "keyDown", key: "f", code: "KeyF", windowsVirtualKeyCode: 70, nativeVirtualKeyCode: 70 },
             () => {
@@ -68,8 +71,13 @@ export default defineBackground({
         if (debuggerAttached.has(tabId)) {
           sendKey();
         } else {
+          console.log("[AF BG] attaching debugger to tab", tabId, "- watch for Chrome notification!");
           chrome.debugger.attach({ tabId }, "1.3", () => {
-            if (chrome.runtime.lastError) return;
+            if (chrome.runtime.lastError) {
+              console.log("[AF BG] debugger attach FAILED:", chrome.runtime.lastError.message);
+              return;
+            }
+            console.log("[AF BG] debugger attached OK");
             debuggerAttached.add(tabId);
             sendKey();
           });
