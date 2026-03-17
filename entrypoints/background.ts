@@ -10,6 +10,9 @@ export default defineBackground({
       debuggerAttached.delete(tabId);
     });
 
+    // Save window bounds before fullscreen so we can restore on exit
+    const savedBounds = new Map<number, { left: number; top: number; width: number; height: number }>();
+
     // Click extension icon → open settings page
     chrome.action.onClicked.addListener(() => {
       chrome.tabs.create({ url: chrome.runtime.getURL("/settings.html") });
@@ -56,9 +59,20 @@ export default defineBackground({
       if (message.action === "toggleWindowFullscreen") {
         chrome.windows.getCurrent((win) => {
           if (win.id === undefined) return;
-          chrome.windows.update(win.id, {
-            state: win.state === "fullscreen" ? "normal" : "fullscreen",
-          });
+          if (win.state === "fullscreen") {
+            // Exit: restore saved bounds
+            const bounds = savedBounds.get(win.id);
+            if (bounds) {
+              savedBounds.delete(win.id);
+              chrome.windows.update(win.id, { state: "normal", ...bounds });
+            } else {
+              chrome.windows.update(win.id, { state: "normal" });
+            }
+          } else {
+            // Enter: save bounds first
+            savedBounds.set(win.id, { left: win.left!, top: win.top!, width: win.width!, height: win.height! });
+            chrome.windows.update(win.id, { state: "fullscreen" });
+          }
         });
         return false;
       }
@@ -66,6 +80,8 @@ export default defineBackground({
       if (message.action === "setWindowFullscreen") {
         chrome.windows.getCurrent((win) => {
           if (win.id === undefined || win.state === "fullscreen") return;
+          // Save bounds before entering fullscreen
+          savedBounds.set(win.id, { left: win.left!, top: win.top!, width: win.width!, height: win.height! });
           chrome.windows.update(win.id, { state: "fullscreen" });
         });
         return false;
@@ -74,7 +90,14 @@ export default defineBackground({
       if (message.action === "exitWindowFullscreen") {
         chrome.windows.getCurrent((win) => {
           if (win.id === undefined || win.state !== "fullscreen") return;
-          chrome.windows.update(win.id, { state: "normal" });
+          // Restore saved bounds, or just go normal
+          const bounds = savedBounds.get(win.id);
+          if (bounds) {
+            savedBounds.delete(win.id);
+            chrome.windows.update(win.id, { state: "normal", ...bounds });
+          } else {
+            chrome.windows.update(win.id, { state: "normal" });
+          }
         });
         return false;
       }
