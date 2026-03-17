@@ -27,6 +27,16 @@ export default defineContentScript({
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
     };
 
+    // Try to click the site's own fullscreen button (YouTube, Odysee/Video.js)
+    const clickSiteFullscreenButton = () => {
+      const btn = document.querySelector(
+        ".ytp-fullscreen-button, .vjs-fullscreen-control, " +
+        '[aria-label*="ullscreen"], [title*="ullscreen"], ' +
+        ".fullscreen-button, [data-purpose='fullscreen-button']"
+      ) as HTMLElement | null;
+      if (btn) btn.click();
+    };
+
     const exitFullscreen = () => {
       isFullscreen = false;
       browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
