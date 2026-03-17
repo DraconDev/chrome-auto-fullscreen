@@ -1,10 +1,5 @@
-Auto Fullscreen - Chrome Web Store Listing
-==========================================
-
-SHORT DESCRIPTION (132 char max):
-Auto fullscreen any page on load, navigation, or click-and-hold. Works everywhere - not just videos.
-
-LONG DESCRIPTION:
+Chrome Web Store - Long Description
+====================================
 
 🚀 Automatically enter fullscreen when browsing any website!
 
@@ -26,3 +21,13 @@ Only requires storage permission for your settings. No data collection, no exter
 
 📋 Permissions:
 💾 Storage - save your preferences
+
+
+SEO Name Ideas
+==============
+
+Auto Fullscreen - Fullscreen Any Page
+Full Page Mode - Auto Fullscreen
+Fullscreen Anywhere - Auto Fullscreen
+Auto Fullscreen Browser - Click to Fullscreen
+Fullscreen Toggle - Auto Fullscreen Any Page
