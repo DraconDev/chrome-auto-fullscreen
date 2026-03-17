@@ -108,13 +108,6 @@ function App() {
             onChange={() => update({ strictSafety: !state.strictSafety })} />
         </Section>
 
-        <Section title="Video">
-          <Toggle label="Fullscreen video element (F key)"
-            hint="Also send F key to fullscreen the video player on click. Uses the debugger API — Chrome will show a one-time permission prompt per tab."
-            checked={state.fullscreenVideo}
-            onChange={() => update({ fullscreenVideo: !state.fullscreenVideo })} />
-        </Section>
-
         <Section title="Customization">
           <Toggle label="Charge animation"
             hint="Show a ring animation while holding the click"
