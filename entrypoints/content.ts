@@ -23,11 +23,6 @@ export default defineContentScript({
     let isFullscreen = false;
     const MMB_KEY = "af_mmb_intent";
 
-    const enterFullscreen = () => {
-      isFullscreen = true;
-      browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-    };
-
     // Try to click the site's own fullscreen button (YouTube, Odysee/Video.js)
     const clickSiteFullscreenButton = () => {
       const btn = document.querySelector(
