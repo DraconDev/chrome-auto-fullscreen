@@ -108,7 +108,7 @@ export default defineContentScript({
       while (node && node !== document.body) {
         const tag = node.tagName;
         if (tag === "A" || tag === "BUTTON" || tag === "INPUT" || tag === "SELECT" ||
-            tag === "TEXTAREA" || tag === "LABEL" ||
+            tag === "TEXTAREA" || tag === "LABEL" || tag === "VIDEO" ||
             node.getAttribute("role") === "button" || node.getAttribute("role") === "link" ||
             node.isContentEditable) return true;
         node = node.parentElement;
