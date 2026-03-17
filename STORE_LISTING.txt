@@ -1,3 +1,4 @@
+Auto Fullscreen - Fullscreen Any Page
 Chrome Web Store - Long Description
 ====================================
 
@@ -21,13 +22,3 @@ Only requires storage permission for your settings. No data collection, no exter
 
 📋 Permissions:
 💾 Storage - save your preferences
-
-
-SEO Name Ideas
-==============
-
-Auto Fullscreen - Fullscreen Any Page
-Full Page Mode - Auto Fullscreen
-Fullscreen Anywhere - Auto Fullscreen
-Auto Fullscreen Browser - Click to Fullscreen
-Fullscreen Toggle - Auto Fullscreen Any Page
