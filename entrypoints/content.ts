@@ -306,6 +306,7 @@ export default defineContentScript({
       autoFullscreenEnabled = nv.autoFullscreenEnabled;
       neverAutoExit = nv.oneWayFullscreen;
       autoFullscreenOnNewVideo = nv.autoFullscreenOnNewVideo;
+      autoVideoFullscreen = nv.autoVideoFullscreen;
       strictSafety = nv.strictSafety;
       longPressDelay = nv.longPressDelay;
       topEdgeExitEnabled = nv.topEdgeExitEnabled;
