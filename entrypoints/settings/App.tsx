@@ -91,6 +91,10 @@ function App() {
             hint="Detect navigation on single-page apps like YouTube and Odysee via URL changes"
             checked={state.autoFullscreenOnNewVideo}
             onChange={() => update({ autoFullscreenOnNewVideo: !state.autoFullscreenOnNewVideo })} />
+          <Toggle label="Auto video fullscreen on navigation"
+            hint="Try clicking the site's fullscreen button when navigating to a new video. May not work on all sites."
+            checked={state.autoVideoFullscreen}
+            onChange={() => update({ autoVideoFullscreen: !state.autoVideoFullscreen })} />
         </Section>
 
         <Section title="Interaction">
