@@ -2,6 +2,34 @@
 
 Auto fullscreen any page on load, navigation, or click-and-hold. Works everywhere — not just videos.
 
+## Chrome Web Store Listing
+
+**Short description** (for manifest — already set):
+> Auto fullscreen any page on load, navigation, or click-and-hold. Works everywhere — not just videos.
+
+**Long description** (paste into Chrome Web Store developer dashboard):
+
+> Automatically enter fullscreen when browsing any website.
+>
+> **Features:**
+> • Auto-fullscreen on any page load
+> • Click and hold anywhere to toggle fullscreen (configurable hold time)
+> • SPA navigation detection — works on YouTube, Odysee, and other single-page apps
+> • Exit by moving cursor to the top edge of the screen
+> • Smart blocking — won't fullscreen when clicking links, buttons, or form inputs
+> • Visual charge ring animation during hold
+> • Customizable hold time and theme color
+> • Settings open in a full tab, not a tiny popup
+>
+> **How it works:**
+> Uses Chrome's window fullscreen API to maximize your browser. Window size is saved before entering fullscreen and automatically restored on exit.
+>
+> **Privacy:**
+> Only requires storage permission for your settings. No data collection, no external requests.
+>
+> **Permissions:**
+> • Storage — save your preferences
+
 ## Features
 
 - Auto-fullscreen on page load
