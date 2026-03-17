@@ -43,19 +43,6 @@ export default defineBackground({
         return true;
       }
 
-      if (message.action === "toggleWindowFullscreen") {
-        chrome.windows.getCurrent((win) => {
-          if (win.id === undefined) return;
-          if (win.state === "fullscreen") {
-            restoreBounds(win.id);
-          } else {
-            saveBounds(win);
-            chrome.windows.update(win.id, { state: "fullscreen" });
-          }
-        });
-        return false;
-      }
-
       if (message.action === "setWindowFullscreen") {
         chrome.windows.getCurrent((win) => {
           if (win.id === undefined || win.state === "fullscreen") return;
