@@ -17,59 +17,21 @@ export default defineContentScript({
     let topEdgeExitEnabled = s.topEdgeExitEnabled;
     let rippleEnabled = s.rippleEnabled;
     let primaryColor = s.primaryColor || "#00FFFF";
-    let videoFullscreen = s.fullscreenVideo;
 
-    // --- State ---
     let newTabIntent = false;
-    let lastFullscreenedVideo: HTMLVideoElement | null = null;
-    let lastFullscreenedUrl = "";
+    let isFullscreen = false;
     const MMB_KEY = "af_mmb_intent";
 
-    const findMainVideo = (): HTMLVideoElement | null => {
-      const videos = document.querySelectorAll("video");
-      let best: HTMLVideoElement | null = null;
-      let bestArea = 0;
-      for (const v of videos) {
-        const area = v.offsetWidth * v.offsetHeight;
-        if (area > bestArea && v.offsetWidth >= 200 && v.offsetHeight >= 150) {
-          best = v;
-          bestArea = area;
-        }
-      }
-      return best;
-    };
-
-    // --- Fullscreen state tracking (chrome.windows.update doesn't set document.fullscreenElement) ---
-    let isFullscreen = false;
-
-    // --- Send F key to fullscreen the video element ---
-    const sendFKey = () => {
-      if (videoFullscreen) {
-        console.log("[AF] sending F key, videoFullscreen=", videoFullscreen);
-        browser.runtime.sendMessage({ action: "sendFKey" });
-      } else {
-        console.log("[AF] F key SKIPPED, videoFullscreen=", videoFullscreen);
-      }
-    };
-
-    // --- Enter fullscreen: window + F key for video ---
     const enterFullscreen = () => {
-      console.log("[AF] enterFullscreen(), videoFullscreen=", videoFullscreen);
       isFullscreen = true;
       browser.runtime.sendMessage({ action: "setWindowFullscreen" });
-      if (videoFullscreen) sendFKey();
     };
 
-    // --- Enter fullscreen from click (same as enterFullscreen) ---
-    const enterFullscreenFromClick = enterFullscreen;
-
-    // --- Exit fullscreen: window ---
     const exitFullscreen = () => {
       isFullscreen = false;
       browser.runtime.sendMessage({ action: "exitWindowFullscreen" });
     };
 
-    // --- Persist modifier state ---
     const saveModifierState = (active: boolean) => {
       if (active) {
         browser.storage.local.set({ [MODIFIER_KEY]: { ts: Date.now() } }).catch(() => {});
@@ -78,7 +40,7 @@ export default defineContentScript({
       }
     };
 
-    // --- Modifier key detection ---
+    // --- Modifier keys ---
     document.addEventListener("keydown", (e) => {
       if (e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Alt")) {
         newTabIntent = true;
@@ -190,7 +152,7 @@ export default defineContentScript({
 
       const doChargeAction = () => {
         if (neverAutoExit || !isFullscreen) {
-          enterFullscreenFromClick();
+          enterFullscreen();
         } else {
           exitFullscreen();
         }
@@ -230,15 +192,12 @@ export default defineContentScript({
     // --- SPA URL change detection ---
     let lastKnownUrl = location.href;
 
-    // Compare URLs ignoring fullscreen-related params (YouTube adds fs=1)
     const urlChanged = (a: string, b: string): boolean => {
       if (a === b) return false;
       try {
         const ua = new URL(a, location.origin);
         const ub = new URL(b, location.origin);
-        // Same path and hostname?
         if (ua.hostname !== ub.hostname || ua.pathname !== ub.pathname) return true;
-        // Compare search params, ignoring fullscreen-related ones
         const skip = new Set(["fs", "fs_mode", "fullscreen"]);
         const pa = new URLSearchParams(ua.search);
         const pb = new URLSearchParams(ub.search);
@@ -258,12 +217,9 @@ export default defineContentScript({
       if (urlChanged(lastKnownUrl, currentUrl)) {
         lastKnownUrl = currentUrl;
         if (isEnabled && autoFullscreenEnabled && autoFullscreenOnNewVideo && !newTabIntent) {
-          lastFullscreenedVideo = findMainVideo();
-          lastFullscreenedUrl = lastFullscreenedVideo?.currentSrc || lastFullscreenedVideo?.src || "";
           enterFullscreen();
         }
       }
-      // Always update tracker (catches fullscreen param changes)
       lastKnownUrl = currentUrl;
       newTabIntent = false;
       browser.storage.local.remove(MMB_KEY).catch(() => {});
@@ -319,11 +275,6 @@ export default defineContentScript({
 
     // --- Auto-fullscreen on load ---
     if (isEnabled && autoFullscreenEnabled && !newTabIntent) {
-      const mainVideo = findMainVideo();
-      if (mainVideo) {
-        lastFullscreenedVideo = mainVideo;
-        lastFullscreenedUrl = mainVideo.currentSrc || mainVideo.src || "";
-      }
       lastKnownUrl = location.href;
       enterFullscreen();
     }
@@ -345,7 +296,6 @@ export default defineContentScript({
       topEdgeExitEnabled = nv.topEdgeExitEnabled;
       rippleEnabled = nv.rippleEnabled;
       primaryColor = nv.primaryColor || "#00FFFF";
-      videoFullscreen = nv.fullscreenVideo;
       if (!isEnabled) {
         if (settingsTimeout) clearTimeout(settingsTimeout);
         settingsTimeout = setTimeout(() => exitFullscreen(), 100);
