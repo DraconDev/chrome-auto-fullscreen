@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Auto Fullscreen",
-  "description": "Auto fullscreen any page on load, navigation, or click-and-hold charge.",
+  "description": "Auto fullscreen any page on load, navigation, or click-and-hold. Works everywhere — not just videos.",
   "version": "2.0.0",
   "icons": {
     "16": "icon/16.png",

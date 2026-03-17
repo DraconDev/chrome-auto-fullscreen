@@ -5,7 +5,7 @@ export default defineConfig({
   manifest: {
     name: "Auto Fullscreen",
     description:
-      "Auto fullscreen any page on load, navigation, or click-and-hold charge.",
+      "Auto fullscreen any page on load, navigation, or click-and-hold. Works everywhere — not just videos.",
     version: "2.0.0",
     permissions: ["storage"],
     host_permissions: ["<all_urls>"],
