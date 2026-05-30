@@ -1,0 +1,12 @@
+name: CLA
+on:
+  pull_request_target:
+    types: [opened, closed, synchronize]
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    steps:
+      - name: CLA
+        uses: contributor-sign-tool@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
