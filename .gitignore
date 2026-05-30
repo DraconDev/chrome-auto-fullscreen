@@ -22,6 +22,7 @@
 .direnv/
 .dracon/*
 .git/
+.output/
 .venv/
 __pycache__/
 background_results.jsonl
@@ -71,6 +72,4 @@ tasks*.json
 !flake.nix
 !rust-toolchain.toml
 !rustfmt.toml
-# Large files (auto-added by dracon-sync)
-.output/
 # --- END DRACON MANAGED BLOCK ---
